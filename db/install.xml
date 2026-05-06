@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="blocks/atrisk/db" VERSION="20260504" COMMENT="block_atrisk owned tables (FR-106c, FR-110, FR-117, FR-119)"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="block_atrisk_dismissals" COMMENT="Teacher dismissals of student flags, scoped per (courseid, userid). FR-110.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Flagged learner whose flag is dismissed."/>
+        <FIELD NAME="dismissed_by" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Teacher performing the dismissal. 0 = anonymized/deleted actor (FR-132)."/>
+        <FIELD NAME="dismissed_at" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="dismissed_until" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="dismissed_at + 7 days. Active-filter cutoff."/>
+        <FIELD NAME="signals_at_dismissal" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON: signals firing at dismissal time, severity, preset. For end-of-term recalibration analysis (FR-72d)."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="courseid" TYPE="foreign" FIELDS="courseid" REFTABLE="course" REFFIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="course_user_until" UNIQUE="false" FIELDS="courseid, userid, dismissed_until" COMMENT="Render-path lookup: is this user's flag currently dismissed in this course?"/>
+        <INDEX NAME="dismissed_by" UNIQUE="false" FIELDS="dismissed_by" COMMENT="Privacy provider lookup of dismissal-as-actor records."/>
+        <INDEX NAME="dismissed_until" UNIQUE="false" FIELDS="dismissed_until" COMMENT="Prune scheduled task scan."/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="block_atrisk_grade_snapshots" COMMENT="Weekly course-total grade snapshots per active student. Source for grade-trend signal. FR-117.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="snapshotweek" TYPE="int" LENGTH="6" NOTNULL="true" SEQUENCE="false" COMMENT="ISO week stamp YYYYWW."/>
+        <FIELD NAME="finalgrade" TYPE="number" LENGTH="10" NOTNULL="false" DECIMALS="5" COMMENT="Course-total final grade at snapshot time. NULL = no information yet (FR-19 null behavior)."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="courseid" TYPE="foreign" FIELDS="courseid" REFTABLE="course" REFFIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+        <KEY NAME="course_user_week" TYPE="unique" FIELDS="courseid, userid, snapshotweek" COMMENT="Upsert key for the weekly snapshot task (FR-118)."/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="course_user" UNIQUE="false" FIELDS="courseid, userid" COMMENT="Signal evaluation: fetch the three most recent snapshots per student."/>
+        <INDEX NAME="snapshotweek" UNIQUE="false" FIELDS="snapshotweek" COMMENT="Pruning rows older than 12 weeks (FR-119)."/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="block_atrisk_flag_snapshots" COMMENT="Weekly per-signal flag-state log for end-of-term recalibration (FR-119 cluster). Opt-in via flag_logging_enabled.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="snapshotweek" TYPE="int" LENGTH="6" NOTNULL="true" SEQUENCE="false" COMMENT="ISO week stamp YYYYWW."/>
+        <FIELD NAME="signal_name" TYPE="char" LENGTH="40" NOTNULL="true" SEQUENCE="false" COMMENT="One row per fired signal — relational shape so aggregation is direct (e.g. GROUP BY signal_name)."/>
+        <FIELD NAME="metric_value" TYPE="number" LENGTH="10" NOTNULL="false" DECIMALS="3" COMMENT="Per-signal raw metric (days idle, miss count, etc.). NULL when undefined."/>
+        <FIELD NAME="percentile" TYPE="int" LENGTH="3" NOTNULL="false" SEQUENCE="false" COMMENT="Normalized peer-percentile (lower = more at risk)."/>
+        <FIELD NAME="preset" TYPE="char" LENGTH="20" NOTNULL="false" SEQUENCE="false" COMMENT="Preset active when this row was written (more / default / fewer)."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="courseid" TYPE="foreign" FIELDS="courseid" REFTABLE="course" REFFIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+        <KEY NAME="course_user_week_signal" TYPE="unique" FIELDS="courseid, userid, snapshotweek, signal_name" COMMENT="Upsert key for the weekly task — re-running in the same ISO week updates rather than duplicates."/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="course_week" UNIQUE="false" FIELDS="courseid, snapshotweek" COMMENT="Term-end queries: enumerate the term's flag history for one course."/>
+        <INDEX NAME="signal_name" UNIQUE="false" FIELDS="signal_name" COMMENT="Cross-course aggregation by signal."/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="block_atrisk_course_shape" COMMENT="Detected operational shape (cohort_paced / self_paced / one_shot_compliance / blended / unknown) per course. Course-level metadata only — contains no personal data (FR-106c, FR-106g).">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="shape" TYPE="char" LENGTH="32" NOTNULL="true" SEQUENCE="false" COMMENT="One of: cohort_paced, self_paced, one_shot_compliance, blended, unknown."/>
+        <FIELD NAME="confidence" TYPE="char" LENGTH="8" NOTNULL="true" SEQUENCE="false" COMMENT="One of: high, medium, low. Engine treats low as if shape were unknown (FR-106b)."/>
+        <FIELD NAME="features_json" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Aggregated feature values for diagnostics. No user identifiers, no per-student values (FR-106g)."/>
+        <FIELD NAME="lastcomputed" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="courseid" TYPE="foreign-unique" FIELDS="courseid" REFTABLE="course" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="shape_confidence" UNIQUE="false" FIELDS="shape, confidence" COMMENT="Category-level queries for cross-customer aggregation by tool_earlywarning (FR-106h)."/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>
