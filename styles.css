@@ -1,0 +1,186 @@
+/* CSS for block_atrisk (Solin Early Warning).
+ *
+ * Per FR-173 every selector is prefixed with .block_atrisk to avoid
+ * collision with theme rules and other plugins.
+ */
+
+.block_atrisk_preset {
+    margin-bottom: 0.5em;
+    font-size: 0.9em;
+}
+
+.block_atrisk_preset_label {
+    margin-right: 0.5em;
+    color: var(--gray-600, #6c757d);
+}
+
+.block_atrisk_preset_btn {
+    display: inline-block;
+    padding: 0.15em 0.5em;
+    margin-right: 0.25em;
+    border: 1px solid var(--gray-400, #ced4da);
+    border-radius: 0.2em;
+    text-decoration: none;
+}
+
+.block_atrisk_preset_btn_active {
+    background-color: var(--primary, #0f6fc5);
+    color: #fff;
+    border-color: var(--primary, #0f6fc5);
+}
+
+.block_atrisk_banner {
+    margin-bottom: 0.75em;
+    padding: 0.5em;
+    font-size: 0.875em;
+}
+
+.block_atrisk_list {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 0;
+}
+
+.block_atrisk_row {
+    padding: 0.5em 0;
+    border-bottom: 1px solid var(--gray-200, #e9ecef);
+}
+
+.block_atrisk_row:last-child {
+    border-bottom: none;
+}
+
+.block_atrisk_severity_label {
+    display: inline-block;
+    padding: 0.1em 0.4em;
+    margin-right: 0.4em;
+    border-radius: 0.2em;
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #fff;
+}
+
+.block_atrisk_severity_red .block_atrisk_severity_label {
+    background-color: var(--danger, #ca3120);
+}
+
+.block_atrisk_severity_yellow .block_atrisk_severity_label {
+    background-color: var(--warning, #f0ad4e);
+    color: #000;
+}
+
+.block_atrisk_badge_tentative {
+    display: inline-block;
+    padding: 0.1em 0.3em;
+    margin-left: 0.3em;
+    border: 1px solid var(--gray-500, #adb5bd);
+    border-radius: 0.2em;
+    font-size: 0.7em;
+    color: var(--gray-700, #495057);
+}
+
+.block_atrisk_signals {
+    margin: 0.25em 0 0.25em 1.5em;
+    padding-left: 0;
+    list-style: disc;
+    font-size: 0.85em;
+    color: var(--gray-700, #495057);
+}
+
+.block_atrisk_percentile {
+    display: inline-block;
+    margin-left: 0.5em;
+    font-size: 0.8em;
+    color: var(--gray-600, #6c757d);
+}
+
+.block_atrisk_actions {
+    margin-top: 0.25em;
+    font-size: 0.85em;
+}
+
+.block_atrisk_action {
+    text-decoration: none;
+}
+
+.block_atrisk_expand_toggle_wrap {
+    margin-bottom: 0.4em;
+    text-align: right;
+    font-size: 0.85em;
+}
+
+.block_atrisk_expand_toggle {
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.block_atrisk_details {
+    /* Native details/summary; ensure no extra browser margins. */
+    margin: 0;
+}
+
+.block_atrisk_summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 0.1em 0;
+}
+
+.block_atrisk_summary::-webkit-details-marker {
+    display: none;
+}
+
+.block_atrisk_summary::before {
+    content: "\25B8"; /* Right-pointing triangle. */
+    display: inline-block;
+    width: 1em;
+    margin-right: 0.2em;
+    color: var(--gray-600, #6c757d);
+    transition: transform 0.15s ease;
+}
+
+.block_atrisk_details[open] > .block_atrisk_summary::before {
+    transform: rotate(90deg);
+}
+
+.block_atrisk_body {
+    margin-left: 1.2em;
+}
+
+.block_atrisk_view_all {
+    margin-top: 0.5em;
+    text-align: right;
+    font-size: 0.85em;
+}
+
+.block_atrisk_empty {
+    padding: 0.5em;
+    color: var(--gray-600, #6c757d);
+    font-style: italic;
+}
+
+.block_atrisk_paused {
+    margin-top: 0.5em;
+}
+
+.block_atrisk_resume {
+    margin-left: 0.4em;
+}
+
+.block_atrisk_pause_link_wrap {
+    margin-bottom: 0.4em;
+    font-size: 0.85em;
+}
+
+.block_atrisk_pause_link {
+    text-decoration: none;
+}
+
+.block_atrisk_breaks_note {
+    margin-bottom: 0.5em;
+    padding: 0.3em 0.5em;
+    background-color: var(--gray-100, #f8f9fa);
+    border-left: 3px solid var(--gray-400, #ced4da);
+    font-size: 0.8em;
+    color: var(--gray-700, #495057);
+}
