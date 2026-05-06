@@ -1,0 +1,36 @@
+name: Releasing in the Plugins directory
+
+# Per FR-190. Triggered when a tag matching this branch's suffix is pushed
+# (e.g. `v1.0.0-MOODLE_405_STABLE` on `main`). Uses the canonical Moodle HQ
+# release action to push the built ZIP to https://moodle.org/plugins/ via the
+# `local_plugins_add_version` web service.
+#
+# Requires repo secret MOODLE_ORG_TOKEN — generate one at:
+#   https://moodle.org/user/managetokens.php
+# pick the `plugins_maintenance` service. The token must belong to the
+# moodle.org account that owns the plugin's directory entry.
+#
+# The Plugin Directory entry must already exist when this workflow first runs;
+# the very first version is submitted manually at
+# https://moodle.org/plugins/registerplugin.php (FR-193).
+
+on:
+  push:
+    tags:
+      - 'v*-MOODLE_405_STABLE'
+
+jobs:
+  release-at-moodle-org:
+    runs-on: ubuntu-latest
+
+    env:
+      PLUGIN: block_atrisk
+      MOODLE_BRANCH: MOODLE_405_STABLE
+
+    steps:
+      - name: Call the Moodle Plugins directory release API
+        uses: moodlehq/add-plugin-release@main
+        with:
+          plugin_name: ${{ env.PLUGIN }}
+          plugin_release_token: ${{ secrets.MOODLE_ORG_TOKEN }}
+          plugin_branch: ${{ env.MOODLE_BRANCH }}
