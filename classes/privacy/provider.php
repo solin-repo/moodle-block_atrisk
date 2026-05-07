@@ -225,7 +225,7 @@ class provider implements
                 $exported = [];
                 foreach ($rows as $row) {
                     $exported[] = [
-                        'role' => $row->userid === (int) $userid ? 'subject' : 'actor',
+                        'role' => (int) $row->userid === (int) $userid ? 'subject' : 'actor',
                         'dismissed_at' => transform::datetime($row->dismissed_at),
                         'dismissed_until' => transform::datetime($row->dismissed_until),
                     ];

@@ -67,7 +67,7 @@ final class readiness_report {
      * @return array Report data, suitable for json_encode().
      */
     public function build(bool $includenames = false, bool $allcourses = false, ?int $now = null): array {
-        global $CFG, $DB;
+        global $CFG;
         $now = $now ?? time();
 
         $courses = $this->survey_courses($allcourses, $includenames, $now);

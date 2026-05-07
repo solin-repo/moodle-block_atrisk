@@ -89,6 +89,7 @@ final class cached_flag_engine {
             'thresholds' => $config['thresholds'] ?? [],
             'calibration' => $config['calibration'] ?? [],
             'groupid' => $config['groupid'] ?? 0,
+            'breaks' => $config['breaks'] ?? [],
         ];
         ksort($signature);
         return $courseid . '_' . sha1(json_encode($signature));

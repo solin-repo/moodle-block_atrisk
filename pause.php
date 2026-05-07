@@ -78,7 +78,7 @@ if ($action === 'pause') {
             if (!$active) {
                 $kept[] = $line;
             }
-        } catch (\invalid_parameter_exception $e) {
+        } catch (\invalid_parameter_exception) {
             // Preserve unparseable lines verbatim — don't silently delete.
             $kept[] = $line;
         }
