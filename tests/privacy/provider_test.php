@@ -277,4 +277,36 @@ final class provider_test extends advanced_testcase {
         $writer = writer::with_context($context);
         $this->assertTrue($writer->has_any_data(), 'writer must have data for the subject student');
     }
+
+    /**
+     * Regression: the exported 'role' field for a dismissal where the
+     * exporting user IS the dismissed student must be 'subject', not
+     * 'actor'. Earlier code compared a string ($row->userid from DML) to
+     * an int with === and always returned 'actor'.
+     */
+    public function test_export_user_data_role_field_is_subject_for_student(): void {
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+        $student = $this->getDataGenerator()->create_user();
+        $teacher = $this->getDataGenerator()->create_user();
+        $this->seed_dismissal($course->id, $student->id, $teacher->id);
+
+        $contextlist = provider::get_contexts_for_userid($student->id);
+        $approved = new approved_contextlist(
+            \core_user::get_user($student->id),
+            'block_atrisk',
+            $contextlist->get_contextids()
+        );
+        provider::export_user_data($approved);
+
+        $context = context_course::instance($course->id);
+        $writer = writer::with_context($context);
+        $exported = $writer->get_data([
+            get_string('pluginname', 'block_atrisk'),
+            'dismissals',
+        ]);
+        $this->assertNotNull($exported, 'dismissals export must be present');
+        $this->assertNotEmpty($exported->rows);
+        $this->assertSame('subject', $exported->rows[0]['role']);
+    }
 }
