@@ -89,7 +89,6 @@ class renderer extends \plugin_renderer_base {
             $html .= $this->render_pause_banner(
                 $context['activebreak'],
                 $blockinstanceid,
-                $courseid,
                 $context['canconfigure'] ?? false
             );
         } else if (!empty($context['breaksdampeneddays'])) {
@@ -197,11 +196,10 @@ class renderer extends \plugin_renderer_base {
      *
      * @param array{start:int,end:int} $activebreak
      * @param int $blockinstanceid
-     * @param int $courseid
      * @param bool $canconfigure
      * @return string HTML.
      */
-    private function render_pause_banner(array $activebreak, int $blockinstanceid, int $courseid, bool $canconfigure): string {
+    private function render_pause_banner(array $activebreak, int $blockinstanceid, bool $canconfigure): string {
         $datestr = userdate($activebreak['end'], get_string('strftimedate', 'core_langconfig'));
         $body = get_string('paused_until', 'block_atrisk', (object) ['date' => $datestr]);
         if ($canconfigure && $blockinstanceid > 0) {
@@ -374,7 +372,7 @@ class renderer extends \plugin_renderer_base {
 
         // Body (revealed on expand) — signal explanations, percentile, actions.
         $body = \html_writer::start_tag('ul', ['class' => 'block_atrisk_signals']);
-        foreach ($f->triggered as $name => $r) {
+        foreach ($f->triggered as $r) {
             $body .= \html_writer::tag('li', s($r->explanation));
         }
         $body .= \html_writer::end_tag('ul');

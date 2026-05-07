@@ -182,12 +182,12 @@ final class engine_config {
     private static function parse_combined_breaks(string $sitetext, string $instancetext): array {
         try {
             $site = breaks::parse($sitetext);
-        } catch (\invalid_parameter_exception $e) {
+        } catch (\invalid_parameter_exception) {
             $site = [];
         }
         try {
             $instance = breaks::parse($instancetext);
-        } catch (\invalid_parameter_exception $e) {
+        } catch (\invalid_parameter_exception) {
             $instance = [];
         }
         // Concatenate, then re-merge to dedupe overlaps across the two lists.
