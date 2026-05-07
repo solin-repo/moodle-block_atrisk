@@ -5,6 +5,8 @@ of students at risk of disengagement. Multi-signal heuristics over data
 Moodle already collects. No machine-learning backend, no email blast, no
 analytics tool dependency.
 
+![Block in a course view, default sensitivity, one student expanded showing reasons and actions](docs/screenshots/flagged-list-default.png)
+
 ## Compatibility
 
 | Moodle | PHP | Database | Branch |
@@ -12,6 +14,83 @@ analytics tool dependency.
 | 5.2 | 8.3+ | PostgreSQL, MySQL 8, MariaDB | `main` |
 | 5.1 | 8.2+ | PostgreSQL, MySQL 8, MariaDB | `MOODLE_501_STABLE` |
 | 4.5 LTS | 8.1+ | PostgreSQL, MySQL 8, MariaDB | `MOODLE_405_STABLE` |
+
+## Installation
+
+Pick the branch / ZIP that matches your Moodle version:
+
+| Moodle | Tag pattern |
+|---|---|
+| 5.2 | `v{X.Y.Z}-MOODLE_502_STABLE` |
+| 5.1 | `v{X.Y.Z}-MOODLE_501_STABLE` |
+| 4.5 LTS | `v{X.Y.Z}-MOODLE_405_STABLE` |
+
+**Via the admin UI:** download the ZIP for your Moodle version from the
+[releases page](https://github.com/solin-repo/moodle-block_atrisk/releases),
+then *Site administration → Plugins → Install plugins*, drop the ZIP,
+confirm.
+
+**Via git:** clone the matching branch directly into the webroot:
+
+```bash
+cd /path/to/moodle/blocks
+git clone -b MOODLE_502_STABLE https://github.com/solin-repo/moodle-block_atrisk.git atrisk
+```
+
+(For Moodle 4.5 LTS use `MOODLE_405_STABLE`; for 5.1 use
+`MOODLE_501_STABLE`. The directory name on disk must be `atrisk`, not
+`moodle-block_atrisk`.)
+
+Then visit *Site administration → Notifications*, or run
+`php admin/cli/upgrade.php`, to install the plugin and create its
+tables. Once installed, turn editing on inside any course and add the
+*Solin Early Warning* block from the block picker.
+
+## What teachers see
+
+The block sits in the course-view sidebar, visible only to users with
+the view capability (default: editing teachers, non-editing teachers,
+managers). Students never see it.
+
+![Block in the course-view sidebar of a Moodle course](docs/screenshots/block-in-course.png)
+
+By default each row is collapsed, showing severity, name, and the
+optional *Tentative* badge during the calibration window. Click a row
+or use the **Expand all** toggle to see the per-signal reasons, the
+worst-percentile, and the action links.
+
+![Block with all rows expanded, showing per-signal reasons for each student](docs/screenshots/flagged-list-expanded.png)
+
+### Action links
+
+Each expanded row offers up to three actions, plus a block-wide pause
+control in the header:
+
+- **Send message** — opens Moodle's standard messaging UI with the
+  student pre-selected (`/message/index.php?id={userid}`). Requires the
+  `block/atrisk:messagestudent` capability and the platform's standard
+  messaging capabilities on the target user.
+- **View outline** — links to the per-student course outline at
+  `/course/user.php?id={courseid}&user={userid}`, which lists the
+  student's recent activity, completion state, and grade entries
+  inside the course. Useful as a one-click drill-down before
+  intervening.
+- **Dismiss for one week** — hides the flag from the list for **7
+  days**. Stored as a row in `block_atrisk_dismissals` keyed on
+  `(courseid, userid)` and applied across every block instance in the
+  course (so dismissing in one block instance also clears it from
+  another instance in the same course). An **Undo** link appears
+  inline on the same render so an accidental click is one-click
+  recoverable. Dismissal also captures the signals firing at click
+  time (`signals_at_dismissal` JSON: signals, severity, preset) for
+  end-of-term false-positive analysis. Requires
+  `block/atrisk:dismissflag`.
+- **Pause for one week** (block header, users with
+  `block/atrisk:configureblock`) — appends `today, today+6d` to the
+  per-instance breaks list, suppressing the entire block until the
+  range expires. The header link toggles to **Resume now** while the
+  range is active. See *Holidays and term breaks* for the underlying
+  mechanism.
 
 ## Signals
 
@@ -57,18 +136,27 @@ instance). Remaining flagged students sit behind a "View all" link.
 
 ## Calibration window
 
-Signals don't fire blindly on a brand-new course. For the first **two
-weeks** after a course starts (or after a student's enrolment activates,
-on rolling courses), only inactivity-as-no-access fires. Weeks **3–4**
-run the full signal set but tag rows with a "Tentative" badge. From
-**week 5** onward, no badge.
+Signals don't fire blindly on a brand-new course. The output you see
+evolves over the first month of activity:
 
-The block auto-disables peer-relative signals when the course has fewer
-than **10** active enrolments (hard floor) and warns when the count is
-between 10 and 19 (soft floor). "Active enrolment" means students with
-an active, non-suspended course enrolment — unrelated to the Moodle
-**cohort** entity (`mdl_cohort` / *Site administration → Users →
-Cohorts*), which this block does not use.
+| Course week | Phase | What you see |
+|---|---|---|
+| 1–2 | **Gated** | Only the *no-course-access-at-all-yet* form of inactivity fires. The block shows the calibrating banner: *"Heuristics are calibrating — full signals activate from week 3."* |
+| 3–4 | **Tentative** | All enabled signals run. Each flagged row is marked with a small *Tentative* badge alongside the severity colour, signalling that the signal histories are still short and the flags should be weighted accordingly. |
+| 5+ | **Confident** | No badge. Signals are at full strength. |
+
+Course week count is reckoned from `course.startdate`. For courses with
+no start date or with rolling enrolment, the per-student timeline is
+reckoned from `mdl_user_enrolments.timestart` (the user's enrolment
+activation), falling back to `timecreated`. The window length is
+configurable site-wide (default 2 weeks gated, 2 weeks tentative).
+
+The block also auto-disables peer-relative signals when the course has
+fewer than **10** active enrolments (hard floor) and warns when the
+count is between 10 and 19 (soft floor). "Active enrolment" means
+students with an active, non-suspended course enrolment — unrelated to
+the Moodle **cohort** entity (`mdl_cohort` / *Site administration →
+Users → Cohorts*), which this block does not use.
 
 ## Groups
 
@@ -116,6 +204,8 @@ YYYY-MM-DD`. Lines starting with `#` are comments. Example:
 `course_breaks` field, additive to the site calendar. Format is the
 same. Use it for ad-hoc pauses that don't apply institution-wide.
 
+![Per-instance block configuration with the course-specific breaks field showing a Spring break example](docs/screenshots/block-config-advanced.png)
+
 **While a break is active**: the block shows an informational banner
 above the list — *"Currently in a configured break (until 7 January
 2027). The list reflects pre-break activity; break time is excluded
@@ -151,14 +241,85 @@ the action and its scope.
 the next render's metrics, so a teacher returning from a forgotten
 pause can fix the false-positive flood in one form save.
 
-## Show: More / Default / Fewer
+## Configuration
 
-A per-block control widens or narrows the criteria. "More" loosens the
-thresholds (e.g., flag students inactive for 5+ days instead of 7+);
-"Fewer" tightens them. Hover the buttons for the exact effect. The
-control changes thresholds for inactivity, assessment-miss, and
-forum-silence. Site administrators can disable the control entirely to
-enforce institution-wide thresholds.
+### Site-wide settings
+
+*Site administration → Plugins → Blocks → Solin Early Warning.*
+
+![Site administration page showing per-signal enable/threshold settings](docs/screenshots/site-settings.png)
+
+The page is grouped into sections:
+
+- **Per-signal enable / threshold** — turn each signal on or off and
+  set its default threshold (inactivity days, assessment-miss
+  lookback, forum-silence lookback). The grade-trend and
+  stalled-completion signals have no numeric threshold — they fire on
+  consecutive-decline and bottom-quartile respectively.
+- **Cohort floors** — the hard floor (default 10) and soft floor
+  (default 20) for active enrolments, controlling when peer-relative
+  signals auto-disable or carry the small-class caveat.
+- **Calibration window** — the gated and tentative phase lengths
+  (default 2 + 2 weeks).
+- **Sensitivity preset visibility** — show or hide the per-block
+  *Show: More / Default / Fewer* control. Hide it to enforce
+  institution-wide thresholds; show it to let teachers tune per
+  course.
+- **Display top-N** — the default visible row count in the block
+  (default 12). Per-block override available.
+- **Breaks calendar** — site-wide holiday list (see *Holidays and
+  term breaks*).
+- **Retention** — `dismissal_log_retention_days` (default 365),
+  `flag_log_retention_days` (default 365). Grade-snapshot retention
+  is hard-coded at 12 ISO weeks.
+- **Recalibration data** — opt-in `flag_logging_enabled` toggle for
+  the weekly per-signal flag log used in recalibration analysis. Off
+  by default.
+
+### Per-instance settings
+
+Each placed block carries its own configuration form (*Configure Solin
+Early Warning block*). Settings are organised so the most common one
+is visible immediately and advanced overrides sit behind *Show
+more…*.
+
+![Per-instance block configuration showing the Number-of-students-to-show field](docs/screenshots/block-config-basic.png)
+
+- **Number of students to show** — overrides the site-wide top-N for
+  this course only. Leave blank to inherit.
+- **Forum-silence signal** *(advanced)* — `Inherit site default /
+  Force on / Force off`. Use *Force on* in courses that rely on forum
+  participation, *Force off* in courses where forums are
+  structurally absent or optional.
+- **Peer-comparison scope** *(advanced)* — `Whole course (default) /
+  Only viewer's groups`. Confine peer baselines to the viewer's
+  groups in courses where groups are structurally separate.
+- **Course shape** *(advanced)* — auto-detected from course-shape
+  signals; can be overridden to one of `cohort_with_dates`,
+  `self_paced`, `blended`, `one_shot_compliance`, `unknown`. Affects
+  the engine's per-shape adjustments to inactivity and other lookbacks.
+- **Course-specific breaks** *(advanced)* — additive to the site-wide
+  breaks calendar (see *Holidays and term breaks*).
+
+### Sensitivity control: *Show: More / Default / Fewer*
+
+A per-block control widens or narrows the criteria. Site
+administrators can hide the control to enforce institution-wide
+thresholds; otherwise teachers can tune per course.
+
+| Preset | Inactivity | Assessment-miss | Forum-silence |
+|---|---|---|---|
+| **More** (more flags) | ≥ 5 days idle | ≤ 21-day window | ≥ 10 days silent |
+| **Default** | site default (7 days) | site default (14 days) | site default (14 days) |
+| **Fewer** (fewer flags) | ≥ 14 days idle | ≤ 10-day window | ≥ 21 days silent |
+
+The direction matches the preset name on every signal: a wider
+inactivity threshold (5 days) is *easier* to qualify for, and a
+longer assessment-miss lookback covers *more* eligible activities and
+therefore catches more potential misses, so both push toward more
+flags under "More". Grade-trend and stalled-completion are unaffected
+by the preset (their thresholds are structural — consecutive-decline
+and bottom-quartile — not numeric).
 
 ## Signal requirements
 
@@ -199,6 +360,57 @@ signals are unavailable; the others continue to flag students.
   courses where grading hasn't started, and students enrolled
   mid-week all delay the signal until the third weekly snapshot has
   been written.
+
+## FAQ
+
+**Why isn't anyone flagged in my new course?**
+The calibration window. During weeks 1–2 only the strictest form of
+inactivity (no course access at all yet) fires. From week 3 every
+signal runs, with a *Tentative* badge until week 5. See *Calibration
+window* above.
+
+**A student is flagged but they have a documented absence.**
+Click **Dismiss for one week** on their row. The dismissal hides the
+flag for 7 days across every block instance in the course and is
+fully reversible via the inline **Undo** link on the same render.
+
+**Going on holiday next week — how do I avoid a flood of false
+positives on return?**
+Use the **Pause for one week** link in the block header for a quick
+pause, or for an institution-wide pause add the date range to the
+*Site administration → Breaks calendar*. Both retroactively dampen
+the metrics, so even adding the range *after* the break fixes the
+next render in one form save.
+
+**Can students see this block?**
+No. Visibility is gated on `block/atrisk:viewflags`, which is granted
+by default to editing teachers, non-editing teachers, and managers
+only. The block also restricts itself to course-view contexts and
+won't appear on the dashboard.
+
+**Does this plugin send any data to Solin or third parties?**
+No. All processing happens inside your Moodle instance. No external
+APIs, no analytics, no telemetry. The optional *Readiness data
+export* is downloaded by an admin and never transmitted.
+
+**Why is the count in the block different from the count behind "View
+all"?**
+The block shows the top-N most-at-risk students (default 12). "View
+all" paginates the entire flagged list. Counts will differ when more
+than N students are flagged.
+
+**Can I run this without enabling completion tracking?**
+Yes, but assessment-miss and stalled-completion won't fire — those
+two signals depend on completion data. Inactivity, grade-trend, and
+forum-silence work either way. The block surfaces a banner pointing
+to *Course settings → Completion tracking* when completion is off.
+
+**Will the heuristics be auto-tuned over time?**
+Not in this release. The plugin captures the data needed for manual
+recalibration (dismissal records and the opt-in weekly flag log), and
+ships starter SQL queries for the analysis (see *Recalibration
+analysis* below). Future releases may add an admin UI on top of those
+queries.
 
 ## Scheduled tasks
 
@@ -463,45 +675,6 @@ no data egress, no ML training. If you also need institution-wide
 rollups (flag counts across courses, category dashboards, audit
 reporting), see the commercial Solin Early Warning Dashboard listed
 below.
-
-## Installation
-
-Pick the branch / ZIP that matches your Moodle version (see the
-Compatibility table above):
-
-| Moodle | Tag pattern |
-|---|---|
-| 5.2 | `v{X.Y.Z}-MOODLE_502_STABLE` |
-| 5.1 | `v{X.Y.Z}-MOODLE_501_STABLE` |
-| 4.5 LTS | `v{X.Y.Z}-MOODLE_405_STABLE` |
-
-**Via the admin UI:** download the ZIP for your Moodle version from the
-[releases page](https://github.com/solin-repo/moodle-block_atrisk/releases),
-then *Site administration → Plugins → Install plugins*, drop the ZIP,
-confirm.
-
-**Via git:** clone the matching branch directly into the webroot:
-
-```bash
-cd /path/to/moodle/blocks
-git clone -b MOODLE_502_STABLE https://github.com/solin-repo/moodle-block_atrisk.git atrisk
-```
-
-(For Moodle 4.5 LTS use `MOODLE_405_STABLE`; for 5.1 use
-`MOODLE_501_STABLE`. The directory name on disk must be `atrisk`, not
-`moodle-block_atrisk`.)
-
-Then visit *Site administration → Notifications*, or run
-`php admin/cli/upgrade.php`, to install the plugin and create its
-tables.
-
-## Continuous integration
-
-Every push and pull request is tested against `moodle-plugin-ci` —
-PHPUnit, Behat, `moodle-cs`, validate, savepoints, mustache, grunt — on
-the matching Moodle branch with both PostgreSQL and MariaDB. CI status
-is visible on the
-[GitHub Actions tab](https://github.com/solin-repo/moodle-block_atrisk/actions).
 
 ## Issue tracker
 
