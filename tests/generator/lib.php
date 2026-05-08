@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
- * Plugin version metadata for block_atrisk (Solin Early Warning).
+ * PHPUnit data generator for block_atrisk.
  *
  * @package    block_atrisk
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
@@ -24,9 +24,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'block_atrisk';
-$plugin->version   = 2026050800;
-$plugin->release   = '1.0.0';
-$plugin->maturity  = MATURITY_BETA;
-$plugin->requires  = 2024100700; // Moodle 4.5 LTS baseline.
-$plugin->supported = [405, 405]; // Single-version range on the 4.5 LTS branch (FR-181).
+/**
+ * Block_atrisk generator. Inherits the standard block_instances row creation
+ * from core's testing_block_generator; no plugin-specific options needed.
+ */
+class block_atrisk_generator extends testing_block_generator {
+}
