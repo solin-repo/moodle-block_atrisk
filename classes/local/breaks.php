@@ -49,7 +49,7 @@ final class breaks {
      * sorted by start.
      *
      * @param string $text Stored breaks-calendar config.
-     * @return array<int,array{start:int,end:int}> Sorted, merged ranges.
+     * @return array Sorted, merged ranges.
      * @throws \invalid_parameter_exception When a line is malformed.
      */
     public static function parse(string $text): array {
@@ -85,8 +85,8 @@ final class breaks {
      * Validate a breaks-calendar string. Returns null on success, or a
      * one-line error message suitable for form-level display.
      *
-     * @param string $text
-     * @return string|null
+     * @param string $text Breaks-calendar text to validate.
+     * @return string|null Null on success, or a one-line error message.
      */
     public static function validate(string $text): ?string {
         try {
@@ -101,7 +101,7 @@ final class breaks {
      * Sum, in seconds, the overlap between the given ranges and a
      * specific time window.
      *
-     * @param array<int,array{start:int,end:int}> $ranges Output of {@see parse()}.
+     * @param array $ranges Output of {@see self::parse()}.
      * @param int $windowstart Window start (inclusive).
      * @param int $windowend Window end (inclusive).
      * @return int Total overlap in seconds (zero if no overlap).
@@ -122,8 +122,13 @@ final class breaks {
     }
 
     /**
-     * Convenience wrapper around {@see overlap_seconds()} returning days
-     * (rounded down) — the unit signals work in.
+     * Convenience wrapper around {@see self::overlap_seconds()} returning
+     * days (rounded down) — the unit signals work in.
+     *
+     * @param array $ranges Parsed ranges.
+     * @param int $windowstart Window start (inclusive).
+     * @param int $windowend Window end (inclusive).
+     * @return int Total overlap in whole days (zero if no overlap).
      */
     public static function overlap_days(array $ranges, int $windowstart, int $windowend): int {
         return (int) floor(self::overlap_seconds($ranges, $windowstart, $windowend) / DAYSECS);
@@ -133,9 +138,9 @@ final class breaks {
      * Find the first range containing $now (if any). Used to drive the
      * "Heuristics paused for break" render state.
      *
-     * @param array<int,array{start:int,end:int}> $ranges
-     * @param int $now
-     * @return array{start:int,end:int}|null
+     * @param array $ranges Parsed ranges.
+     * @param int $now Reference timestamp.
+     * @return array|null The first range containing $now, or null if none.
      */
     public static function active_at(array $ranges, int $now): ?array {
         foreach ($ranges as $r) {
@@ -150,8 +155,8 @@ final class breaks {
      * Merge overlapping or adjacent (touching) ranges into a sorted,
      * non-overlapping list.
      *
-     * @param array<int,array{start:int,end:int}> $ranges
-     * @return array<int,array{start:int,end:int}>
+     * @param array $ranges Unmerged input ranges.
+     * @return array Sorted, non-overlapping merged ranges.
      */
     private static function merge_ranges(array $ranges): array {
         if (count($ranges) <= 1) {
@@ -175,6 +180,11 @@ final class breaks {
     /**
      * Parse a single ISO date (YYYY-MM-DD) into a midnight timestamp in
      * the server's local timezone. Throws on malformed input.
+     *
+     * @param string $iso ISO 8601 date string (YYYY-MM-DD).
+     * @param int $lineno One-based line number for error reporting.
+     * @return int Midnight timestamp in the server's local timezone.
+     * @throws \invalid_parameter_exception On malformed input.
      */
     private static function parse_iso_date(string $iso, int $lineno): int {
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $iso)) {

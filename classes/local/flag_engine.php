@@ -204,8 +204,9 @@ final class flag_engine {
      * 100 − rank before comparing. The signal class declares its direction
      * via {@see signal_interface::metric_direction()}.
      *
-     * @param array<string,signal_result> $triggered
-     * @param array<string,array<int,signal_result>> $allresults
+     * @param array $triggered Map signal-name → signal_result for fired signals.
+     * @param array $allresults Map signal-name → per-user signal_result list.
+     * @return int|null Worst (lowest, post-normalization) percentile, or null.
      */
     public function worst_percentile(array $triggered, array $allresults): ?int {
         // Map of name → fully qualified signal class. Mirrors the factory
@@ -249,9 +250,9 @@ final class flag_engine {
     /**
      * Load the most-relevant user_enrolments row per user for calibration.
      *
-     * @param int $courseid
-     * @param array<int> $userids
-     * @return array<int,\stdClass> userid → user_enrolments row.
+     * @param int $courseid Course ID.
+     * @param array $userids User IDs to load enrolments for.
+     * @return array userid → user_enrolments row.
      */
     private function load_enrolments(int $courseid, array $userids): array {
         global $DB;
@@ -280,10 +281,10 @@ final class flag_engine {
     /**
      * Load the set of users currently dismissed in this course.
      *
-     * @param int $courseid
-     * @param array $userids
-     * @param int $now
-     * @return array<int,bool> userid → present iff actively dismissed.
+     * @param int $courseid Course ID.
+     * @param array $userids User IDs to check for dismissals.
+     * @param int $now Reference timestamp.
+     * @return array userid → present iff actively dismissed.
      */
     private function load_dismissed(int $courseid, array $userids, int $now): array {
         global $DB;
@@ -309,8 +310,8 @@ final class flag_engine {
     /**
      * Load lowercase "lastname firstname" strings for stable sorting.
      *
-     * @param array<int> $userids
-     * @return array<int,string> userid → "lastname firstname".
+     * @param array $userids User IDs to load names for.
+     * @return array userid → lowercase "lastname firstname".
      */
     private function load_names(array $userids): array {
         global $DB;

@@ -29,6 +29,10 @@ use advanced_testcase;
 final class forum_silence_test extends advanced_testcase {
     /**
      * Posts a forum message (creating a discussion if needed).
+     *
+     * @param int $forumid Forum ID to post to.
+     * @param int $userid Author user ID.
+     * @param int $time Timestamp for the post.
      */
     private function post_to_forum(int $forumid, int $userid, int $time): void {
         global $DB;

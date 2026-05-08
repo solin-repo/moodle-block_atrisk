@@ -31,6 +31,9 @@ final class flag_snapshot_writer_test extends advanced_testcase {
     /**
      * Build a course past the calibration window with the at-risk block
      * instantiated and the given student enrolled.
+     *
+     * @param int $now Reference timestamp.
+     * @return array Tuple of [course, student, blockinstanceid].
      */
     private function setup_course_with_block_and_student(int $now): array {
         global $DB;

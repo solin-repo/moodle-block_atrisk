@@ -474,6 +474,10 @@ final class course_shape {
 
     /**
      * Linear-interpolation percentile (R type 7). $sorted MUST be ascending.
+     *
+     * @param array $sorted Ascending-sorted numeric values.
+     * @param float $p Percentile to compute (0..100).
+     * @return float Percentile value.
      */
     private static function percentile(array $sorted, float $p): float {
         $n = count($sorted);

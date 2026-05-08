@@ -121,6 +121,8 @@ final class readiness_report_test extends advanced_testcase {
 
     /**
      * Helper — instantiate the at-risk block on a course context.
+     *
+     * @param \stdClass $course Course record to attach the block to.
      */
     private function add_atrisk_block_to(\stdClass $course): void {
         global $DB;

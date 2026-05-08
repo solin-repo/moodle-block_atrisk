@@ -134,6 +134,9 @@ final class stalled_completion implements signal_interface {
 
     /**
      * Sample median of an array of numbers.
+     *
+     * @param array $values Numeric values.
+     * @return float Median value (zero for an empty input).
      */
     public static function median(array $values): float {
         if (empty($values)) {
@@ -150,6 +153,9 @@ final class stalled_completion implements signal_interface {
 
     /**
      * 25th-percentile (lower quartile) value. Uses linear interpolation.
+     *
+     * @param array $values Numeric values.
+     * @return float Lower-quartile value (zero for an empty input).
      */
     public static function quartile1(array $values): float {
         if (empty($values)) {

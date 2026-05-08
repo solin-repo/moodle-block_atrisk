@@ -116,6 +116,9 @@ final class grade_snapshot_writer {
 
     /**
      * Prune snapshot rows older than {@see self::RETENTION_WEEKS} weeks.
+     *
+     * @param int $now Reference timestamp.
+     * @return int 1 if any rows were deleted, 0 otherwise.
      */
     public function prune(int $now): int {
         global $DB;
@@ -129,6 +132,9 @@ final class grade_snapshot_writer {
 
     /**
      * ISO-week stamp YYYYWW for a Unix timestamp.
+     *
+     * @param int $timestamp Unix timestamp.
+     * @return int Year-week stamp in YYYYWW format.
      */
     public static function iso_week(int $timestamp): int {
         return (int) date('oW', $timestamp);
@@ -152,7 +158,8 @@ final class grade_snapshot_writer {
     /**
      * Look up the course-total grade_item for a course.
      *
-     * @return \stdClass|null
+     * @param int $courseid Course ID.
+     * @return \stdClass|null Grade item record, or null if none exists.
      */
     private function course_total_item(int $courseid): ?\stdClass {
         global $DB;
@@ -166,7 +173,8 @@ final class grade_snapshot_writer {
     /**
      * Active gradebook-role enrollments in a course.
      *
-     * @return array<int> userids.
+     * @param int $courseid Course ID.
+     * @return array User IDs of active gradebook-role members.
      */
     private function active_cohort(int $courseid): array {
         global $CFG, $DB;
