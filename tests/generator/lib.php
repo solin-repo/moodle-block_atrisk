@@ -22,8 +22,6 @@
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Block_atrisk generator. Inherits the standard block_instances row creation
  * from core's testing_block_generator; no plugin-specific options needed.
