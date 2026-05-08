@@ -36,6 +36,11 @@ use tool_dataprivacy\task\process_data_request_task;
 final class dataprivacy_request_test extends advanced_testcase {
     /**
      * Seed a dismissal row.
+     *
+     * @param int $courseid Course ID.
+     * @param int $userid Student user ID.
+     * @param int $teacherid Teacher user ID who issued the dismissal.
+     * @return int The new row's id.
      */
     private function seed_dismissal(int $courseid, int $userid, int $teacherid): int {
         global $DB;
@@ -50,6 +55,10 @@ final class dataprivacy_request_test extends advanced_testcase {
 
     /**
      * Seed a grade-snapshot row.
+     *
+     * @param int $courseid Course ID.
+     * @param int $userid Student user ID.
+     * @return int The new row's id.
      */
     private function seed_snapshot(int $courseid, int $userid): int {
         global $DB;

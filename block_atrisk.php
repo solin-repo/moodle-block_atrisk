@@ -186,8 +186,8 @@ class block_atrisk extends block_base {
      * lookback window. Used by the renderer to surface a transparency
      * note when past breaks are subtracting from current metrics.
      *
-     * @param array<int,array{start:int,end:int}> $breaks Parsed ranges.
-     * @param int $now
+     * @param array $breaks Parsed ranges of break periods.
+     * @param int $now Current timestamp.
      * @return int Total dampened days (zero if none).
      */
     private function dampened_days(array $breaks, int $now): int {

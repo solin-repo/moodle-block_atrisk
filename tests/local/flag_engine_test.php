@@ -30,6 +30,9 @@ use advanced_testcase;
 final class flag_engine_test extends advanced_testcase {
     /**
      * Make a course confidently past its calibration window.
+     *
+     * @param int $now Reference timestamp.
+     * @return \stdClass Course record.
      */
     private function make_course_past_calibration(int $now): \stdClass {
         return $this->getDataGenerator()->create_course([

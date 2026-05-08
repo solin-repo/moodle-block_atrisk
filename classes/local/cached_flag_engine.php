@@ -22,7 +22,7 @@ namespace block_atrisk\local;
  * signalconfig_hash, groupid).
  *
  * Notes:
- * - The cache's TTL is enforced via the {@see db/caches.php} 'rawsignals'
+ * - The cache's TTL is enforced via the `db/caches.php` 'rawsignals'
  *   definition (ttl=300).
  * - Dismissals do NOT invalidate the cache: the engine handles dismissal
  *   filtering at every call (see {@see flag_engine::evaluate_course()}).
@@ -52,7 +52,10 @@ final class cached_flag_engine {
     /**
      * Cache-aware wrapper around {@see flag_engine::evaluate_course()}.
      *
-     * @return flagged_student[]
+     * @param int $courseid Course ID.
+     * @param array $config Engine configuration (signals, thresholds, etc.).
+     * @param int|null $now Reference timestamp; defaults to {@see time()}.
+     * @return flagged_student[] Flagged students for the course.
      */
     public function evaluate_course(int $courseid, array $config = [], ?int $now = null): array {
         $key = self::cache_key($courseid, $config);
@@ -69,6 +72,8 @@ final class cached_flag_engine {
     /**
      * Invalidate the cache for one course. Call from preset/dismiss
      * endpoints.
+     *
+     * @param int $courseid Course ID whose cache entries should be evicted.
      */
     public static function invalidate_course(int $courseid): void {
         $cache = \cache::make('block_atrisk', 'rawsignals');
@@ -82,6 +87,10 @@ final class cached_flag_engine {
      * Compute a stable cache key from the courseid + signal config.
      * The key format matches the FR-124 lower-layer key shape:
      * (courseid, signalconfig_hash, groupid).
+     *
+     * @param int $courseid Course ID.
+     * @param array $config Engine configuration to hash into the key.
+     * @return string Cache key.
      */
     private static function cache_key(int $courseid, array $config): string {
         $signature = [

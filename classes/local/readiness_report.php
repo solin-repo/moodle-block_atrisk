@@ -109,7 +109,10 @@ final class readiness_report {
     /**
      * Produce a per-course row for every course in scope.
      *
-     * @return array<int,array>
+     * @param bool $allcourses Survey every course on the site, not just those with a block instance.
+     * @param bool $includenames Include shortname/fullname in the output.
+     * @param int $now Reference timestamp.
+     * @return array Per-course rows.
      */
     private function survey_courses(bool $allcourses, bool $includenames, int $now): array {
         global $DB;
@@ -147,6 +150,12 @@ final class readiness_report {
 
     /**
      * Per-course row.
+     *
+     * @param \stdClass $course Course record.
+     * @param bool $hasblock Whether the at-risk block is instantiated on this course.
+     * @param bool $includenames Include shortname/fullname in the output.
+     * @param int $now Reference timestamp.
+     * @return array Per-course row.
      */
     private function survey_one_course(\stdClass $course, bool $hasblock, bool $includenames, int $now): array {
         global $DB;
@@ -191,6 +200,9 @@ final class readiness_report {
 
     /**
      * Describe the per-instance config of a course's atrisk block.
+     *
+     * @param int $courseid Course ID.
+     * @return array Per-instance configuration summary.
      */
     private function describe_block_instance(int $courseid): array {
         global $DB;
@@ -223,6 +235,9 @@ final class readiness_report {
 
     /**
      * Top-level summary of the surveyed courses.
+     *
+     * @param array $courses Per-course rows from {@see self::survey_courses()}.
+     * @return array Aggregate counts.
      */
     private function summarise(array $courses): array {
         $total = count($courses);
@@ -251,6 +266,9 @@ final class readiness_report {
     /**
      * Derive aggregate warnings flagging structural mismatches likely to
      * produce false positives once the block runs.
+     *
+     * @param array $courses Per-course rows from {@see self::survey_courses()}.
+     * @return array List of warning descriptors.
      */
     private function derive_warnings(array $courses): array {
         $warnings = [];

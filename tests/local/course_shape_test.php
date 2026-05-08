@@ -34,6 +34,9 @@ use advanced_testcase;
 final class course_shape_test extends advanced_testcase {
     /**
      * Helper: build a synchronous-cohort feature bundle.
+     *
+     * @param int $coursestart Course start timestamp.
+     * @return array Feature bundle for {@see course_shape::adjustments_for()}.
      */
     private function synchronous_features(int $coursestart): array {
         // 12 students, all activating within 3 days of course start.

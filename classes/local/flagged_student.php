@@ -27,12 +27,12 @@ final class flagged_student {
     /**
      * Construct a per-student flagged outcome.
      *
-     * @param int $userid
+     * @param int $userid Student user ID.
      * @param string $severity One of severity::NONE / YELLOW / RED.
      * @param string $phase Calibration phase
      *               ({@see calibration_window::PHASE_GATED} etc.).
-     * @param array<string,signal_result> $triggered Map signal-name → result
-     *               for signals that fired.
+     * @param array $triggered Map signal-name → signal_result for signals
+     *               that fired.
      * @param int|null $worstpercentile Peer-percentile on the worst-fired
      *               signal's underlying metric (0–100). Null when no
      *               percentile computable.

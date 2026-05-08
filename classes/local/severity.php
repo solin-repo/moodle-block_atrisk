@@ -54,6 +54,9 @@ final class severity {
 
     /**
      * Is this severity flagged (i.e., should appear in the at-risk list)?
+     *
+     * @param string $level One of NONE, YELLOW, RED.
+     * @return bool True for YELLOW or RED.
      */
     public static function is_flagged(string $level): bool {
         return $level === self::YELLOW || $level === self::RED;
@@ -61,6 +64,9 @@ final class severity {
 
     /**
      * Numeric ordering for sort: red first, then yellow, then none.
+     *
+     * @param string $level One of NONE, YELLOW, RED.
+     * @return int Sort rank (RED=2, YELLOW=1, NONE/other=0).
      */
     public static function rank(string $level): int {
         return match ($level) {

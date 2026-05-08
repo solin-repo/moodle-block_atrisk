@@ -30,6 +30,13 @@ final class stalled_completion_test extends advanced_testcase {
     /**
      * Insert N course-modules-completion rows for $userid in $course at
      * $cmids of distinct activities. Returns the array of cmids used.
+     *
+     * @param int $courseid Course ID.
+     * @param int $userid Student user ID.
+     * @param int $count Number of completion rows to create.
+     * @param int $now Reference timestamp for the completion rows.
+     * @param int $state Completion state to record.
+     * @return array Course-module IDs used.
      */
     private function record_completions(int $courseid, int $userid, int $count, int $now, int $state = COMPLETION_COMPLETE): array {
         global $DB;
