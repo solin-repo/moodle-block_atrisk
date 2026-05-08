@@ -22,7 +22,7 @@ namespace block_atrisk\local;
  * Determines whether the viewer is restricted to specific groups when
  * looking at the at-risk block. Used by both the in-block render
  * ({@see \block_atrisk::get_content()}) and the paginated view-all page
- * ({@see view.php}) so they apply the same group-aware filter.
+ * (`view.php`) so they apply the same group-aware filter.
  *
  * The course's group mode and the viewer's `moodle/site:accessallgroups`
  * capability determine the outcome:

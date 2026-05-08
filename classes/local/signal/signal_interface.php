@@ -35,12 +35,12 @@ interface signal_interface {
      * Evaluate the signal across the given course cohort.
      *
      * @param int $courseid Course ID.
-     * @param array<int> $userids Active-cohort user IDs to evaluate.
-     * @param array<string,mixed> $config Signal-specific configuration —
-     *        thresholds, lookback windows, etc. Keys are signal-specific.
+     * @param array $userids Active-cohort user IDs to evaluate.
+     * @param array $config Signal-specific configuration — thresholds,
+     *        lookback windows, etc. Keys are signal-specific.
      * @param int|null $now Reference timestamp for time-based comparisons,
      *        default {@see time()}. Passed in tests for determinism.
-     * @return array<int,signal_result> Indexed by userid.
+     * @return array Per-user signal_result, indexed by userid.
      */
     public function evaluate(int $courseid, array $userids, array $config, ?int $now = null): array;
 

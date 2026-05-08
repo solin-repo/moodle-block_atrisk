@@ -30,6 +30,11 @@ final class assessment_miss_test extends advanced_testcase {
     /**
      * Helper: create a course with completion enabled and one assign with
      * completionexpected at the given offset (seconds, relative to $now).
+     *
+     * @param int $now Reference timestamp.
+     * @param int $expectedoffset Seconds relative to $now for completionexpected.
+     * @param bool $enablecompletion Whether the course has completion enabled.
+     * @return array Tuple of [course, assign] records.
      */
     private function create_course_with_assign(int $now, int $expectedoffset, bool $enablecompletion = true): array {
         $course = $this->getDataGenerator()->create_course([

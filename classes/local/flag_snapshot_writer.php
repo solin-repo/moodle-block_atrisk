@@ -141,6 +141,9 @@ final class flag_snapshot_writer {
      * Return the per-instance configdata for a course's atrisk block, or
      * an empty stdClass if none configured. (One block per course is
      * enforced via instance_allow_multiple = false.)
+     *
+     * @param int $courseid Course ID.
+     * @return \stdClass Decoded configdata, or an empty stdClass.
      */
     private function load_block_instance_config(int $courseid): \stdClass {
         global $DB;

@@ -87,6 +87,9 @@ final class dismissal_service {
     /**
      * Undo a dismissal — remove the row entirely so the flag immediately
      * re-appears.
+     *
+     * @param int $courseid Course ID.
+     * @param int $userid Student user ID whose dismissal should be removed.
      */
     public static function undo(int $courseid, int $userid): void {
         global $DB;
@@ -98,6 +101,11 @@ final class dismissal_service {
 
     /**
      * Is this user's flag currently dismissed in this course?
+     *
+     * @param int $courseid Course ID.
+     * @param int $userid Student user ID.
+     * @param int|null $now Reference timestamp; defaults to {@see time()}.
+     * @return bool True if a dismissal row is currently active.
      */
     public static function is_dismissed(int $courseid, int $userid, ?int $now = null): bool {
         global $DB;

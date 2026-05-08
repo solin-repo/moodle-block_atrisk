@@ -194,9 +194,9 @@ class renderer extends \plugin_renderer_base {
      * Render the "Heuristics paused for break" banner with a "Resume now"
      * link for users with block/atrisk:configureblock.
      *
-     * @param array{start:int,end:int} $activebreak
-     * @param int $blockinstanceid
-     * @param bool $canconfigure
+     * @param array $activebreak Currently active break range.
+     * @param int $blockinstanceid Block instance ID.
+     * @param bool $canconfigure Whether the viewer can configure the block.
      * @return string HTML.
      */
     private function render_pause_banner(array $activebreak, int $blockinstanceid, bool $canconfigure): string {
@@ -221,6 +221,11 @@ class renderer extends \plugin_renderer_base {
     /**
      * Render a small "Pause for one week" inline link for users with
      * configureblock capability.
+     *
+     * @param int $blockinstanceid Block instance ID.
+     * @param int $courseid Course ID.
+     * @param \moodle_url|null $returnurl URL to return to after the action.
+     * @return string HTML.
      */
     private function render_pause_link(int $blockinstanceid, int $courseid, ?\moodle_url $returnurl): string {
         $params = [
@@ -246,6 +251,9 @@ class renderer extends \plugin_renderer_base {
     /**
      * Render a one-line note when past breaks have dampened the metrics
      * (transparency for teachers wondering why fewer students are flagged).
+     *
+     * @param int $totaldays Total days of dampening across past breaks.
+     * @return string HTML.
      */
     private function render_dampening_note(int $totaldays): string {
         $body = get_string('breaks_dampened', 'block_atrisk', (object) ['days' => $totaldays]);
@@ -255,9 +263,10 @@ class renderer extends \plugin_renderer_base {
     /**
      * Render the inline Loose / Balanced / Strict preset control.
      *
-     * @param int $blockinstanceid
+     * @param int $blockinstanceid Block instance ID.
      * @param string $preset Currently-selected preset.
-     * @param int $courseid
+     * @param int $courseid Course ID.
+     * @param \moodle_url|null $returnurl URL to return to after the action.
      * @return string HTML.
      */
     private function render_preset_control(
@@ -338,9 +347,10 @@ class renderer extends \plugin_renderer_base {
     /**
      * Render one flagged-student row.
      *
-     * @param flagged_student $f
+     * @param flagged_student $f Flagged-student outcome.
      * @param \stdClass $user User record (must include name fields).
-     * @param int $courseid
+     * @param int $courseid Course ID.
+     * @param bool $expandall Whether to render the row pre-expanded.
      * @return string HTML.
      */
     private function render_row(flagged_student $f, \stdClass $user, int $courseid, bool $expandall = false): string {

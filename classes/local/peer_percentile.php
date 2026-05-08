@@ -42,9 +42,9 @@ final class peer_percentile {
      * Returns null when the cohort is empty or contains only nulls.
      *
      * @param int|float $subject The subject's metric value.
-     * @param array<int|float|null> $cohort Metric values for the cohort
-     *        (may include nulls; nulls are excluded from the comparison
-     *        set since they represent "no information").
+     * @param array $cohort Metric values for the cohort (may include nulls;
+     *        nulls are excluded from the comparison set since they
+     *        represent "no information").
      * @return int|null Integer percentile 0..100, or null if undefined.
      */
     public static function rank(int|float $subject, array $cohort): ?int {
