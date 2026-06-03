@@ -320,10 +320,11 @@ class provider implements
             ]);
 
             // Actor role: anonymise dismissed_by → 0 (FR-132).
-            $DB->execute(
-                "UPDATE {block_atrisk_dismissals}
-                 SET dismissed_by = 0
-                 WHERE courseid = :courseid AND dismissed_by = :userid",
+            $DB->set_field_select(
+                'block_atrisk_dismissals',
+                'dismissed_by',
+                0,
+                'courseid = :courseid AND dismissed_by = :userid',
                 ['courseid' => $courseid, 'userid' => $userid]
             );
 
@@ -364,10 +365,11 @@ class provider implements
             $params
         );
         // Actor anonymisation.
-        $DB->execute(
-            "UPDATE {block_atrisk_dismissals}
-             SET dismissed_by = 0
-             WHERE courseid = :courseid AND dismissed_by {$insql}",
+        $DB->set_field_select(
+            'block_atrisk_dismissals',
+            'dismissed_by',
+            0,
+            "courseid = :courseid AND dismissed_by {$insql}",
             $params
         );
         // Snapshot deletions.
