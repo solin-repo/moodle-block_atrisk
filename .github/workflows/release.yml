@@ -5,10 +5,12 @@ name: Releasing in the Plugins directory
 # release action to push the built ZIP to https://moodle.org/plugins/ via the
 # `local_plugins_add_version` web service.
 #
-# Requires repo secret MOODLE_ORG_TOKEN — generate one at:
-#   https://moodle.org/user/managetokens.php
-# pick the `plugins_maintenance` service. The token must belong to the
-# moodle.org account that owns the plugin's directory entry.
+# Requires repo secret MOODLE_ORG_TOKEN — generate a long-lived token at the
+# Moodle Plugins directory: log in at https://moodle.org/plugins/, then use the
+# Navigation block > Plugins > API access page, for the `plugins_maintenance`
+# service. (Do NOT use Preferences > Security keys / user/managetokens.php — those
+# tokens expire quickly.) The token must belong to the moodle.org account that
+# owns the plugin's directory entry.
 #
 # The Plugin Directory entry must already exist when this workflow first runs;
 # the very first version is submitted manually at

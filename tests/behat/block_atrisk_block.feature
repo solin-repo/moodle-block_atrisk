@@ -132,3 +132,28 @@ Feature: Solin Early Warning block surfaces flagged students in a course
     And I am on "Course B" course homepage
     Then I should see "Aves" in the "Solin Early Warning" "block"
     And I should not see "Borg" in the "Solin Early Warning" "block"
+
+  @javascript
+  Scenario: Per-instance configdata survives course backup and restore
+    # Verifies FR-114: the per-instance override (a non-default topn) is preserved
+    # when the course is backed up and restored as a new course. Asserting against
+    # the edit-form field value isolates "did configdata round-trip" from any
+    # signal-evaluation timing concerns the new course might introduce.
+    Given the following config values are set as admin:
+      | enableasyncbackup | 0 |
+    And I log in as "admin"
+    And I am on "Course A" course homepage with editing mode on
+    And I add the "Solin Early Warning" block
+    And I configure the "Solin Early Warning" block
+    And I expand all fieldsets
+    And I set the field "Number of students to show" to "3"
+    And I press "Save changes"
+    When I backup "Course A" course using this options:
+      | Confirmation | Filename | block_atrisk_backup.mbz |
+    And I restore "block_atrisk_backup.mbz" backup into a new course using this options:
+      | Schema | Course name | Course A restored |
+    Then I should see "Course A restored"
+    And "Solin Early Warning" "block" should exist
+    When I configure the "Solin Early Warning" block
+    And I expand all fieldsets
+    Then the field "Number of students to show" matches value "3"
