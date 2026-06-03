@@ -4,6 +4,24 @@ All notable changes to `block_atrisk` (Solin Early Warning) are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] — 2026-06-03
+
+### Changed
+- **Now available for Moodle 4.5 LTS, 5.1, and 5.2.** Shipped as two release
+  packages: a 4.5 LTS build (`supported=[405,405]`) and a combined 5.1–5.2
+  build (`supported=[501,502]`). Runtime code is identical across all
+  supported versions. Moodle 5.0 is intentionally not supported (not tested).
+
+### Fixed
+- Completed phpdoc on the backup/restore test class (one-line summary +
+  `@param`/`@return`) so the full moodle.org prechecker passes cleanly
+  (phpcs 0/0, local_moodlecheck 0, grunt AMD in sync, PHPUnit 173/173).
+
+### Internal
+- Repaired the GitHub release workflow to call the Plugins directory web
+  service directly; the previous reference to a non-existent action would
+  have failed on tag push.
+
 ## [1.0.0] — 2026-05-06 (initial public release)
 
 ### Added — breaks calendar (May 2026)

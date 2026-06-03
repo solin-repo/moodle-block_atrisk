@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'block_atrisk';
-$plugin->version   = 2026060301;
+$plugin->version   = 2026060302;
 $plugin->release   = '1.0.1';
 $plugin->maturity  = MATURITY_BETA;
 $plugin->requires  = 2024100700; // Moodle 4.5 LTS baseline.
