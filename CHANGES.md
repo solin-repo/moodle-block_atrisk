@@ -4,6 +4,35 @@ All notable changes to `block_atrisk` (Solin Early Warning) are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] — 2026-06-03
+
+### Changed
+- **The readiness data export now streams.** It is generated off a database
+  cursor in fixed-size chunks and written incrementally, so a full-catalog
+  export on a large site (thousands of courses) no longer risks the PHP
+  memory limit. Each chunk resolves its course data with a handful of bulk
+  queries instead of several queries per course (#3, #4).
+
+### Added
+- `block/atrisk:myaddinstance` capability, declared per Moodle convention so
+  the block participates in the standard dashboard-block permission model
+  (#2).
+
+### Fixed
+- The in-block "number of students to show" is now clamped to a maximum, so a
+  large site default or per-instance override can no longer produce an
+  unbounded list or page DOM (#4).
+- `flag_snapshot_writer` preloads the week's existing rows once instead of one
+  query per flagged student and signal, removing an N+1 in the weekly
+  snapshot task (#3).
+- Privacy actor anonymisation uses `set_field_select()` rather than a raw
+  `$DB->execute()` UPDATE (#5).
+
+### Internal
+- Added a `moodle-plugin-ci` GitHub Actions workflow that runs the Plugins
+  directory prechecker tool set (phpcs, phpdoc, grunt, PHPUnit, …) on every
+  push and pull request (#1).
+
 ## [1.0.1] — 2026-06-03
 
 ### Changed
