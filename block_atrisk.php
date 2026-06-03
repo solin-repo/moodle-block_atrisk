@@ -30,10 +30,42 @@
  */
 class block_atrisk extends block_base {
     /**
+     * Upper bound on the in-block visible row count. Caps both the user
+     * lookup query and the rendered DOM regardless of the configured
+     * display count, so a large site setting or per-instance override can
+     * never produce an unbounded list (#4). view.php paginates separately.
+     */
+    public const MAX_TOPN = 100;
+
+    /**
      * Initialise the block — sets the title from language strings.
      */
     public function init(): void {
         $this->title = get_string('pluginname', 'block_atrisk');
+    }
+
+    /**
+     * Resolve the in-block visible row count: per-instance override if set
+     * and positive, else the site default (else 12), clamped to
+     * [1, MAX_TOPN].
+     *
+     * @param \stdClass|null $instanceconfig Decoded per-instance config.
+     * @return int Visible row count, guaranteed within [1, MAX_TOPN].
+     */
+    public static function resolve_topn(?\stdClass $instanceconfig): int {
+        $sitedefault = (int) (get_config('block_atrisk', 'display_top_n') ?: 12);
+        $topn = $sitedefault;
+        if (
+            $instanceconfig !== null
+                && isset($instanceconfig->topn)
+                && (int) $instanceconfig->topn > 0
+        ) {
+            $topn = (int) $instanceconfig->topn;
+        }
+        if ($topn < 1) {
+            $topn = 1;
+        }
+        return min($topn, self::MAX_TOPN);
     }
 
     /**
@@ -98,12 +130,9 @@ class block_atrisk extends block_base {
         $preset = $instanceconfig->preset ?? 'default';
         $peerscope = $instanceconfig->peer_scope ?? 'course';
 
-        // Per-instance topn override falls back to site default (FR-60).
-        $sitedefault = (int) (get_config('block_atrisk', 'display_top_n') ?: 12);
-        $topn = $sitedefault;
-        if (isset($instanceconfig->topn) && (int) $instanceconfig->topn > 0) {
-            $topn = (int) $instanceconfig->topn;
-        }
+        // Per-instance topn override falls back to site default (FR-60),
+        // clamped to a sane maximum so the list can never grow unbounded (#4).
+        $topn = self::resolve_topn($instanceconfig);
 
         $canconfigure = has_capability('block/atrisk:configureblock', $context);
         $rendercontext = [

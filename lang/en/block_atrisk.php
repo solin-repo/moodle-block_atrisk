@@ -90,6 +90,7 @@ $string['config_peer_scope_desc'] = 'Which set of students to use as the compari
 $string['config_peer_scope_group'] = 'Only the viewer\'s groups';
 $string['config_topn'] = 'Number of students to show';
 $string['config_topn_desc'] = 'How many flagged students to show in this block. Leave blank to inherit the site default ({$a->sitedefault}).';
+$string['config_topn_max'] = 'Enter a number no greater than {$a}.';
 $string['empty_calibrating'] = 'Heuristics are calibrating — full signals activate from week 3.';
 $string['empty_no_enrolments'] = 'Heuristics will activate when students enrol.';
 $string['empty_no_group_assignment'] = 'You are not a member of any group in this course. The course uses separate groups, so there are no students to show. Ask the course administrator to add you to a group, or to grant the "Access all groups" capability.';
