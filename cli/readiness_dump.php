@@ -66,9 +66,13 @@ EOT);
     exit(0);
 }
 
-$report = (new \block_atrisk\local\readiness_report())->build(
+// Stream straight to stdout so a full-catalog export on a large site does
+// not materialise the whole structure (or a giant JSON string) in memory.
+$handle = fopen('php://output', 'w');
+(new \block_atrisk\local\readiness_report())->stream(
+    $handle,
     (bool) $options['include-names'],
     (bool) $options['all-courses']
 );
-
-echo json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
+fclose($handle);
+echo PHP_EOL;

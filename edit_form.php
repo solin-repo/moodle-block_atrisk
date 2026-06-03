@@ -195,6 +195,12 @@ class block_atrisk_edit_form extends block_edit_form {
                 $errors['config_course_breaks'] = $msg;
             }
         }
+        if (
+            isset($data['config_topn']) && $data['config_topn'] !== ''
+                && (int) $data['config_topn'] > \block_atrisk::MAX_TOPN
+        ) {
+            $errors['config_topn'] = get_string('config_topn_max', 'block_atrisk', \block_atrisk::MAX_TOPN);
+        }
         return $errors;
     }
 }

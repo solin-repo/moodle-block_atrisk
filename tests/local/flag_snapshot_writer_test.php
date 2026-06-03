@@ -121,6 +121,35 @@ final class flag_snapshot_writer_test extends advanced_testcase {
         $this->assertSame($beforecount, $aftercount, 'Re-running within same ISO week must not duplicate rows.');
     }
 
+    public function test_upsert_scales_without_duplicating_rows(): void {
+        $this->resetAfterTest();
+        global $DB;
+        set_config('flag_logging_enabled', 1, 'block_atrisk');
+        set_config('signal_inactivity_enabled', 1, 'block_atrisk');
+
+        $now = 1_700_000_000;
+        [$course] = $this->setup_course_with_block_and_student($now);
+        // Enrol several more students, all of whom trigger inactivity (no
+        // user_lastaccess row), so the upsert handles many rows per course.
+        for ($i = 0; $i < 11; $i++) {
+            $extra = $this->getDataGenerator()->create_user();
+            $this->getDataGenerator()->enrol_user($extra->id, $course->id, 'student');
+        }
+
+        $writer = new flag_snapshot_writer();
+        $first = $writer->run($now);
+        $aftersfirst = $DB->count_records('block_atrisk_flag_snapshots');
+
+        // Re-run within the same ISO week: every row is an UPDATE via the
+        // preloaded map, not a duplicate INSERT.
+        $second = $writer->run($now + 60);
+        $aftersecond = $DB->count_records('block_atrisk_flag_snapshots');
+
+        $this->assertGreaterThanOrEqual(12, $aftersfirst, 'All 12 students should be flagged.');
+        $this->assertSame($first, $second, 'Both runs write the same number of rows.');
+        $this->assertSame($aftersfirst, $aftersecond, 'Re-run must update in place, not duplicate.');
+    }
+
     public function test_prune_removes_rows_older_than_retention(): void {
         $this->resetAfterTest();
         global $DB;

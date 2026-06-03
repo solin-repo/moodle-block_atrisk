@@ -42,6 +42,19 @@ $capabilities = [
         'clonepermissionsfrom' => 'moodle/site:manageblocks',
     ],
 
+    // Declared per Moodle convention so the block participates in the
+    // standard "add to my dashboard" permission model. The block restricts
+    // itself to course-view contexts (see applicable_formats()), so this is
+    // inert in practice, but every block is expected to define it.
+    'block/atrisk:myaddinstance' => [
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [
+            'user' => CAP_ALLOW,
+        ],
+        'clonepermissionsfrom' => 'moodle/my:manageblocks',
+    ],
+
     'block/atrisk:viewflags' => [
         'captype' => 'read',
         'contextlevel' => CONTEXT_BLOCK,

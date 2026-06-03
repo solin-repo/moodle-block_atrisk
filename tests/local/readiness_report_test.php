@@ -119,6 +119,59 @@ final class readiness_report_test extends advanced_testcase {
         $this->assertContains('below_hard_floor', $codes);
     }
 
+    public function test_stream_output_matches_build(): void {
+        $this->resetAfterTest();
+        // A small mixed catalog: one block course with completion, one plain
+        // course with a student so warnings and summary have something to say.
+        $c1 = $this->getDataGenerator()->create_course(['enablecompletion' => 1]);
+        $this->add_atrisk_block_to($c1);
+        $c2 = $this->getDataGenerator()->create_course();
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $c2->id, 'student');
+
+        // Fixed reference time so snapshot_at is identical across both paths.
+        $now = 1780000000;
+        $report = new readiness_report();
+        $expected = $report->build(false, true, $now);
+
+        $handle = fopen('php://temp', 'r+');
+        $report->stream($handle, false, true, $now);
+        rewind($handle);
+        $json = stream_get_contents($handle);
+        fclose($handle);
+
+        $decoded = json_decode($json, true);
+        $this->assertNotNull($decoded, 'stream() must emit valid JSON');
+        // Associative key order is ignored by assertEquals, so the streamed
+        // ordering (courses before summary/warnings) does not matter; the
+        // courses list is ordered by id ASC in both paths.
+        $this->assertEquals($expected, $decoded);
+    }
+
+    public function test_chunked_survey_avoids_per_course_query_explosion(): void {
+        $this->resetAfterTest();
+        global $DB;
+
+        // 30 courses, each with the block, an activity, and an enrolment.
+        for ($i = 0; $i < 30; $i++) {
+            $course = $this->getDataGenerator()->create_course(['enablecompletion' => 1]);
+            $this->add_atrisk_block_to($course);
+            $this->getDataGenerator()->create_module('page', ['course' => $course->id]);
+            $user = $this->getDataGenerator()->create_user();
+            $this->getDataGenerator()->enrol_user($user->id, $course->id, 'student');
+        }
+
+        $before = $DB->perf_get_queries();
+        $report = (new readiness_report())->build(false, true);
+        $queries = $DB->perf_get_queries() - $before;
+
+        $this->assertCount(30, $report['courses']);
+        // The old per-course survey ran ~5 queries per course (~150 for 30).
+        // Chunked bulk runs a handful per chunk (30 fits one chunk), so the
+        // count stays far below the per-course explosion.
+        $this->assertLessThan(30, $queries, "Expected bulk queries; got {$queries} for 30 courses");
+    }
+
     /**
      * Helper — instantiate the at-risk block on a course context.
      *

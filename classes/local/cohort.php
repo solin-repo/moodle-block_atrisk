@@ -114,6 +114,76 @@ final class cohort {
     }
 
     /**
+     * Bulk active-enrolment counts for many courses in a single query.
+     *
+     * Returns, for each requested course, exactly {@code count(self::active($courseid))}
+     * — same definition of "active" (enrolled, not suspended, not
+     * course-completed, holding a {@code $CFG->gradebookroles} role assigned
+     * at the course context). Courses with no active learners are present in
+     * the result with a count of 0. Used by the readiness export so it can
+     * survey a large catalog without one query per course.
+     *
+     * @param int[] $courseids Course IDs to count.
+     * @return array<int,int> courseid → active-enrolment count.
+     */
+    public static function active_counts(array $courseids): array {
+        global $CFG, $DB;
+
+        $courseids = array_values(array_filter(
+            array_map('intval', $courseids),
+            fn($id) => $id > 0
+        ));
+        if (empty($courseids)) {
+            return [];
+        }
+
+        // Same role precedence as active(): gradebookroles, else student archetype.
+        $gradebookroles = trim((string) ($CFG->gradebookroles ?? ''));
+        if ($gradebookroles === '') {
+            $roleids = $DB->get_fieldset_select('role', 'id', 'archetype = :a', ['a' => 'student']);
+        } else {
+            $roleids = array_filter(array_map('intval', explode(',', $gradebookroles)));
+        }
+
+        // Every requested course starts at 0 so callers get a total map.
+        $counts = array_fill_keys($courseids, 0);
+        if (empty($roleids)) {
+            return $counts;
+        }
+
+        [$rolesql, $roleparams] = $DB->get_in_or_equal($roleids, SQL_PARAMS_NAMED, 'r');
+        [$cidsql, $cidparams] = $DB->get_in_or_equal($courseids, SQL_PARAMS_NAMED, 'c');
+
+        // Mirror of active()'s join graph, grouped by course. The role
+        // assignment is scoped to each course's own context via the context
+        // join (ctx.instanceid = course, contextlevel = COURSE), matching
+        // active()'s ra.contextid = <course context> exactly.
+        $sql = "SELECT e.courseid, COUNT(DISTINCT u.id) AS activecount
+                  FROM {enrol} e
+                  JOIN {context} ctx ON ctx.instanceid = e.courseid AND ctx.contextlevel = :clevel
+                  JOIN {user_enrolments} ue ON ue.enrolid = e.id AND ue.status = 0
+                  JOIN {user} u ON u.id = ue.userid
+                  JOIN {role_assignments} ra ON ra.userid = u.id
+                                            AND ra.contextid = ctx.id
+                                            AND ra.roleid {$rolesql}
+             LEFT JOIN {course_completions} cc ON cc.userid = u.id
+                                              AND cc.course = e.courseid
+                                              AND cc.timecompleted IS NOT NULL
+                 WHERE e.courseid {$cidsql}
+                   AND e.status = 0
+                   AND u.deleted = 0
+                   AND u.suspended = 0
+                   AND cc.id IS NULL
+              GROUP BY e.courseid";
+        $params = array_merge(['clevel' => CONTEXT_COURSE], $roleparams, $cidparams);
+
+        foreach ($DB->get_records_sql($sql, $params) as $row) {
+            $counts[(int) $row->courseid] = (int) $row->activecount;
+        }
+        return $counts;
+    }
+
+    /**
      * Determine the peer-relative gating state for a cohort.
      *
      * @param int $cohortsize Number of active learners.

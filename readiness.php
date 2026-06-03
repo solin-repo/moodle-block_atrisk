@@ -42,17 +42,24 @@ if ($action === 'download') {
     $allcourses = (bool) optional_param('allcourses', 0, PARAM_BOOL);
 
     \core_php_time_limit::raise(300);
-    $report = (new \block_atrisk\local\readiness_report())->build($includenames, $allcourses);
-    $payload = json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
     $sitename = strtolower(preg_replace('/[^a-z0-9]+/i', '-', (string) $SITE->shortname)) ?: 'site';
     $filename = "block_atrisk-readiness-{$sitename}-" . date('Ymd-Hi') . '.json';
+
+    // Stream to a temp file so a full-catalog export on a large site never
+    // holds the whole structure (or a giant JSON string) in memory; send_file
+    // then streams that file to the client.
+    $tmpfile = make_request_directory() . '/' . $filename;
+    $handle = fopen($tmpfile, 'w');
+    (new \block_atrisk\local\readiness_report())->stream($handle, $includenames, $allcourses);
+    fclose($handle);
+
     send_file(
-        $payload,
+        $tmpfile,
         $filename,
         0,
         0,
-        true,
+        false,
         true,
         'application/json',
         false,
