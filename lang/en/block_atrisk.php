@@ -39,6 +39,7 @@ $string['atrisk:configureblock'] = 'Configure per-block-instance thresholds and 
 $string['atrisk:configuresite'] = 'Configure site-wide defaults';
 $string['atrisk:dismissflag'] = 'Dismiss a student flag for one week';
 $string['atrisk:messagestudent'] = 'Send a message to a flagged student from the block';
+$string['atrisk:myaddinstance'] = 'Add a new Solin Early Warning block to the Dashboard';
 $string['atrisk:viewflags'] = 'View the flagged-student list';
 $string['badge_tentative'] = 'Tentative';
 $string['banner_completion_off'] = 'Activity completion tracking is off in this course. The assessment-miss and stalled-completion signals are unavailable until a teacher enables completion tracking under Course settings → Completion tracking. The other three signals continue to run.';
