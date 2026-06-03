@@ -74,15 +74,23 @@ final class flag_snapshot_writer {
             return 0;
         }
 
+        // Preload this course+week's existing rows once, keyed by
+        // userid|signal_name, so the per-signal upsert needs no per-row
+        // SELECT (avoids an N+1 across flagged students × fired signals).
+        $existingmap = [];
+        $existingrows = $DB->get_records(
+            'block_atrisk_flag_snapshots',
+            ['courseid' => $courseid, 'snapshotweek' => $week],
+            '',
+            'id, userid, signal_name'
+        );
+        foreach ($existingrows as $er) {
+            $existingmap[$er->userid . '|' . $er->signal_name] = (int) $er->id;
+        }
+
         $written = 0;
         foreach ($flagged as $f) {
             foreach ($f->triggered as $signalname => $result) {
-                $existing = $DB->get_record('block_atrisk_flag_snapshots', [
-                    'courseid' => $courseid,
-                    'userid' => $f->userid,
-                    'snapshotweek' => $week,
-                    'signal_name' => $signalname,
-                ], 'id', IGNORE_MISSING);
                 $row = (object) [
                     'courseid' => $courseid,
                     'userid' => $f->userid,
@@ -93,8 +101,9 @@ final class flag_snapshot_writer {
                     'preset' => $preset,
                     'timecreated' => $now,
                 ];
-                if ($existing !== false) {
-                    $row->id = $existing->id;
+                $key = $f->userid . '|' . $signalname;
+                if (isset($existingmap[$key])) {
+                    $row->id = $existingmap[$key];
                     $DB->update_record('block_atrisk_flag_snapshots', $row);
                 } else {
                     $DB->insert_record('block_atrisk_flag_snapshots', $row);
