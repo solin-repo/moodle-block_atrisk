@@ -45,6 +45,8 @@ require_once($CFG->dirroot . '/backup/util/includes/backup_includes.php');
 require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
 
 /**
+ * Backup and restore round-trip coverage for block_atrisk per-instance config.
+ *
  * @coversNothing
  */
 final class backup_restore_test extends advanced_testcase {
@@ -64,6 +66,9 @@ final class backup_restore_test extends advanced_testcase {
 
     /**
      * Backup $course as TYPE_1COURSE and restore as a brand-new course; returns the new course id.
+     *
+     * @param stdClass $course The course to back up and restore from.
+     * @return int The id of the newly restored course.
      */
     private function backup_and_restore(stdClass $course): int {
         global $CFG, $USER;
