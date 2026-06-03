@@ -167,4 +167,76 @@ final class cohort_test extends advanced_testcase {
         $whole = cohort::active($course->id, []);
         $this->assertEqualsCanonicalizing([$alice->id, $bob->id, $carol->id], $whole);
     }
+
+    /**
+     * The bulk active_counts() must return, per course, exactly
+     * count(active()) — including 0 for courses with no active learners.
+     * This pins the bulk path to the single-course implementation so the
+     * readiness export can use it without changing observable behavior.
+     */
+    public function test_active_counts_matches_per_course_active(): void {
+        $this->resetAfterTest();
+        global $DB;
+        $gen = $this->getDataGenerator();
+
+        // Course A: 2 active students, plus a teacher, a suspended user, and
+        // a course-completed student — none of the latter three count.
+        $ca = $gen->create_course();
+        $s1 = $gen->create_user();
+        $s2 = $gen->create_user();
+        $teacher = $gen->create_user();
+        $suspended = $gen->create_user(['suspended' => 1]);
+        $completed = $gen->create_user();
+        $gen->enrol_user($s1->id, $ca->id, 'student');
+        $gen->enrol_user($s2->id, $ca->id, 'student');
+        $gen->enrol_user($teacher->id, $ca->id, 'editingteacher');
+        $gen->enrol_user($suspended->id, $ca->id, 'student');
+        $gen->enrol_user($completed->id, $ca->id, 'student');
+        $DB->insert_record('course_completions', (object) [
+            'userid' => $completed->id,
+            'course' => $ca->id,
+            'timeenrolled' => time() - 90 * DAYSECS,
+            'timestarted' => time() - 80 * DAYSECS,
+            'timecompleted' => time() - DAYSECS,
+            'reaggregate' => 0,
+        ]);
+
+        // Course B: 1 active student; a second student's enrolment is
+        // suspended and must not count.
+        $cb = $gen->create_course();
+        $s3 = $gen->create_user();
+        $s4 = $gen->create_user();
+        $gen->enrol_user($s3->id, $cb->id, 'student');
+        $gen->enrol_user($s4->id, $cb->id, 'student');
+        $DB->set_field('user_enrolments', 'status', 1, ['userid' => $s4->id]);
+
+        // Course C: created but no enrolments — must report 0, not be absent.
+        $cc = $gen->create_course();
+
+        $ids = [(int) $ca->id, (int) $cb->id, (int) $cc->id];
+        $counts = cohort::active_counts($ids);
+
+        // Equivalence with the per-course implementation, course by course.
+        foreach ($ids as $cid) {
+            $this->assertArrayHasKey($cid, $counts, "course {$cid} missing from counts");
+            $this->assertSame(
+                count(cohort::active($cid)),
+                $counts[$cid],
+                "active_counts disagreed with active() for course {$cid}"
+            );
+        }
+
+        // Absolute expectations, as a guard against both paths sharing a bug.
+        $this->assertSame(2, $counts[(int) $ca->id]);
+        $this->assertSame(1, $counts[(int) $cb->id]);
+        $this->assertSame(0, $counts[(int) $cc->id]);
+    }
+
+    /**
+     * Empty input is a no-op returning an empty map.
+     */
+    public function test_active_counts_empty_input_returns_empty(): void {
+        $this->resetAfterTest();
+        $this->assertSame([], cohort::active_counts([]));
+    }
 }

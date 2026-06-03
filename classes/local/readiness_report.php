@@ -18,13 +18,20 @@ namespace block_atrisk\local;
 
 /**
  * Generator for the "Readiness data export" — produces a JSON-ready
- * array describing the at-risk plugin's site-level configuration plus a
+ * description of the at-risk plugin's site-level configuration plus a
  * structural survey of the course catalog. No personal data; intended
  * for self-review or sharing with a consultant.
  *
+ * Built to scale to large catalogs (thousands of courses) without a
+ * memory spike: {@see self::stream()} writes the JSON incrementally and
+ * the course survey runs off a forward-only recordset cursor processed in
+ * fixed-size chunks, each chunk resolved with a handful of bulk queries
+ * rather than per-course queries. {@see self::build()} returns the same
+ * data as an in-memory array for callers that want the whole structure
+ * (and for the bounded default scope).
+ *
  * The output schema is versioned ({@see self::SCHEMA_VERSION}) so
- * downstream tooling can detect breaking changes between plugin
- * versions.
+ * downstream tooling can detect breaking changes between plugin versions.
  *
  * @package    block_atrisk
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
@@ -33,6 +40,12 @@ namespace block_atrisk\local;
 final class readiness_report {
     /** Output schema version. Bump on backward-incompatible changes. */
     public const SCHEMA_VERSION = '1.0';
+
+    /** Courses surveyed per cursor chunk before bulk-resolving their data. */
+    private const CHUNK = 200;
+
+    /** JSON encode flags shared by build() and stream(). */
+    private const JSON_FLAGS = JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
 
     /** All site-level settings the plugin owns. */
     private const SITE_SETTINGS = [
@@ -55,23 +68,83 @@ final class readiness_report {
     ];
 
     /**
-     * Build the report.
+     * Build the full report as an in-memory array.
      *
-     * @param bool $includenames When true, course shortname + fullname
-     *        are included in per-course rows. Default false (numeric IDs
-     *        only) since names can indirectly identify individuals.
-     * @param bool $allcourses When true, all visible courses are
-     *        included. Default false — only courses where the at-risk
-     *        block is instantiated.
+     * Suitable for json_encode() and for the default (bounded) scope. For
+     * a full-catalog export, prefer {@see self::stream()} to avoid holding
+     * every course in memory at once.
+     *
+     * @param bool $includenames When true, course shortname + fullname are
+     *        included in per-course rows. Default false (numeric IDs only)
+     *        since names can indirectly identify individuals.
+     * @param bool $allcourses When true, all visible courses are included.
+     *        Default false — only courses where the block is instantiated.
      * @param int|null $now Reference timestamp (default time()).
      * @return array Report data, suitable for json_encode().
      */
     public function build(bool $includenames = false, bool $allcourses = false, ?int $now = null): array {
-        global $CFG;
+        $now = $now ?? time();
+        $acc = $this->fresh_accumulator();
+        $courses = [];
+        foreach ($this->course_rows($allcourses, $includenames, $now) as $row) {
+            $courses[] = $row;
+            $this->accumulate($acc, $row);
+        }
+
+        $report = $this->envelope_head($includenames, $now);
+        $report['course_summary'] = $this->finalize_summary($acc);
+        $report['courses'] = $courses;
+        $report['warnings'] = $this->finalize_warnings($acc);
+        return $report;
+    }
+
+    /**
+     * Stream the full report as JSON to an open file handle, bounded in
+     * memory regardless of catalog size. Courses are written one at a time
+     * straight off the cursor; the summary and warnings are accumulated as
+     * rows pass and emitted at the end.
+     *
+     * @param resource $handle Writable stream (temp file, php://output…).
+     * @param bool $includenames See {@see self::build()}.
+     * @param bool $allcourses See {@see self::build()}.
+     * @param int|null $now Reference timestamp (default time()).
+     */
+    public function stream($handle, bool $includenames = false, bool $allcourses = false, ?int $now = null): void {
         $now = $now ?? time();
 
-        $courses = $this->survey_courses($allcourses, $includenames, $now);
+        fwrite($handle, "{\n");
+        foreach ($this->envelope_head($includenames, $now) as $key => $value) {
+            fwrite($handle, json_encode((string) $key, self::JSON_FLAGS) . ': '
+                . json_encode($value, self::JSON_FLAGS) . ",\n");
+        }
 
+        fwrite($handle, '"courses": [');
+        $acc = $this->fresh_accumulator();
+        $first = true;
+        foreach ($this->course_rows($allcourses, $includenames, $now) as $row) {
+            fwrite($handle, ($first ? '' : ',') . json_encode($row, self::JSON_FLAGS));
+            $first = false;
+            $this->accumulate($acc, $row);
+        }
+        fwrite($handle, "],\n");
+
+        fwrite($handle, '"course_summary": '
+            . json_encode($this->finalize_summary($acc), self::JSON_FLAGS) . ",\n");
+        fwrite($handle, '"warnings": '
+            . json_encode($this->finalize_warnings($acc), self::JSON_FLAGS) . "\n");
+        fwrite($handle, "}\n");
+    }
+
+    /**
+     * The report keys that do not depend on the per-course survey:
+     * everything except course_summary, courses and warnings.
+     *
+     * @param bool $includenames Whether course names are included.
+     * @param int $now Reference timestamp.
+     * @return array Ordered head of the report.
+     */
+    private function envelope_head(bool $includenames, int $now): array {
+        global $CFG;
         return [
             'schema_version' => self::SCHEMA_VERSION,
             'snapshot_at' => date('c', $now),
@@ -85,9 +158,6 @@ final class readiness_report {
                 'block_atrisk_version' => (int) (get_config('block_atrisk', 'version') ?: 0),
             ],
             'settings' => $this->collect_settings(),
-            'course_summary' => $this->summarise($courses),
-            'courses' => $courses,
-            'warnings' => $this->derive_warnings($courses),
         ];
     }
 
@@ -107,117 +177,178 @@ final class readiness_report {
     }
 
     /**
-     * Produce a per-course row for every course in scope.
+     * Yield one report row per course in scope, off a forward-only cursor
+     * processed in fixed-size chunks. Each chunk resolves its course_modules
+     * aggregates, block-instance config and active-enrolment counts with one
+     * bulk query apiece, so query volume scales with chunk count, not course
+     * count.
      *
-     * @param bool $allcourses Survey every course on the site, not just those with a block instance.
-     * @param bool $includenames Include shortname/fullname in the output.
+     * @param bool $allcourses Survey every course, not just block-instanced ones.
+     * @param bool $includenames Include shortname/fullname in the rows.
      * @param int $now Reference timestamp.
-     * @return array Per-course rows.
+     * @return \Generator<array> Per-course rows.
      */
-    private function survey_courses(bool $allcourses, bool $includenames, int $now): array {
-        global $DB;
-
+    private function course_rows(bool $allcourses, bool $includenames, int $now): \Generator {
         $blockcourseids = $this->courses_with_block();
+        $hasblock = array_flip($blockcourseids);
+
+        $rs = $this->course_recordset($allcourses, $blockcourseids);
+        $chunk = [];
+        foreach ($rs as $course) {
+            $chunk[(int) $course->id] = $course;
+            if (count($chunk) >= self::CHUNK) {
+                yield from $this->map_chunk($chunk, $hasblock, $includenames, $now);
+                $chunk = [];
+            }
+        }
+        $rs->close();
+        if (!empty($chunk)) {
+            yield from $this->map_chunk($chunk, $hasblock, $includenames, $now);
+        }
+    }
+
+    /**
+     * Forward-only recordset of the courses in scope.
+     *
+     * @param bool $allcourses All visible courses, or only block-instanced ones.
+     * @param int[] $blockcourseids Courses that have a block instance.
+     * @return \moodle_recordset
+     */
+    private function course_recordset(bool $allcourses, array $blockcourseids): \moodle_recordset {
+        global $DB;
+        $fields = 'id, shortname, fullname, format, startdate, enablecompletion';
         if ($allcourses) {
-            $courses = $DB->get_records_select(
+            return $DB->get_recordset_select(
                 'course',
                 'id <> :siteid',
                 ['siteid' => SITEID],
                 'id ASC',
-                'id, shortname, fullname, format, startdate, enablecompletion'
-            );
-        } else {
-            if (empty($blockcourseids)) {
-                return [];
-            }
-            [$insql, $inparams] = $DB->get_in_or_equal($blockcourseids, SQL_PARAMS_NAMED, 'cid');
-            $courses = $DB->get_records_select(
-                'course',
-                "id {$insql}",
-                $inparams,
-                'id ASC',
-                'id, shortname, fullname, format, startdate, enablecompletion'
+                $fields
             );
         }
+        if (empty($blockcourseids)) {
+            // Forward-only empty set without inventing a sentinel course id.
+            return $DB->get_recordset_select('course', '1 = 0', [], 'id ASC', $fields);
+        }
+        [$insql, $inparams] = $DB->get_in_or_equal($blockcourseids, SQL_PARAMS_NAMED, 'cid');
+        return $DB->get_recordset_select('course', "id {$insql}", $inparams, 'id ASC', $fields);
+    }
 
-        $hasblock = array_flip($blockcourseids);
+    /**
+     * Resolve a chunk of course records into report rows using bulk queries.
+     *
+     * @param array $chunk courseid → course record (\stdClass).
+     * @param array $hasblock Set of courseids with a block instance (as keys).
+     * @param bool $includenames Include shortname/fullname.
+     * @param int $now Reference timestamp.
+     * @return array<array> Per-course rows.
+     */
+    private function map_chunk(array $chunk, array $hasblock, bool $includenames, int $now): array {
+        $ids = array_keys($chunk);
+        $aggregates = $this->module_aggregates($ids);
+        $configs = $this->block_configdata($ids);
+        $activecounts = cohort::active_counts($ids);
+
         $rows = [];
-        foreach ($courses as $course) {
-            $rows[] = $this->survey_one_course($course, isset($hasblock[$course->id]), $includenames, $now);
+        foreach ($chunk as $cid => $course) {
+            $startweeksago = null;
+            if (!empty($course->startdate)) {
+                $startweeksago = max(0, (int) floor(($now - (int) $course->startdate) / WEEKSECS));
+            }
+            $agg = $aggregates[$cid] ?? ['count' => 0, 'withcompletion' => 0, 'withexpected' => 0];
+            $withcompletion = $agg['withcompletion'];
+            $withexpected = $agg['withexpected'];
+
+            $row = [
+                'id' => (int) $cid,
+                'format' => $course->format,
+                'startdate_weeks_ago' => $startweeksago,
+                'enablecompletion' => (bool) $course->enablecompletion,
+                'active_enrolments' => (int) ($activecounts[$cid] ?? 0),
+                'activity_count' => (int) $agg['count'],
+                'activities_with_completion' => (int) $withcompletion,
+                'activities_with_completionexpected' => (int) $withexpected,
+                'activities_completion_no_expected' => (int) $withcompletion - (int) $withexpected,
+                'block_atrisk_instance' => isset($hasblock[$cid])
+                    ? $this->describe_configdata($configs[$cid] ?? null)
+                    : null,
+            ];
+            if ($includenames) {
+                $row['shortname'] = $course->shortname;
+                $row['fullname'] = $course->fullname;
+            }
+            $rows[] = $row;
         }
         return $rows;
     }
 
     /**
-     * Per-course row.
+     * Bulk course_modules aggregates for a set of courses: total activities,
+     * completion-tracked, and completion-tracked-with-expected-date. One query.
      *
-     * @param \stdClass $course Course record.
-     * @param bool $hasblock Whether the at-risk block is instantiated on this course.
-     * @param bool $includenames Include shortname/fullname in the output.
-     * @param int $now Reference timestamp.
-     * @return array Per-course row.
+     * @param int[] $courseids
+     * @return array<int,array{count:int,withcompletion:int,withexpected:int}>
      */
-    private function survey_one_course(\stdClass $course, bool $hasblock, bool $includenames, int $now): array {
+    private function module_aggregates(array $courseids): array {
         global $DB;
-
-        $startweeksago = null;
-        if (!empty($course->startdate)) {
-            $startweeksago = max(0, (int) floor(($now - (int) $course->startdate) / WEEKSECS));
+        if (empty($courseids)) {
+            return [];
         }
-
-        $activitycount = $DB->count_records('course_modules', ['course' => $course->id]);
-        $withcompletion = $DB->count_records_select(
-            'course_modules',
-            'course = :cid AND completion > 0',
-            ['cid' => $course->id]
-        );
-        $withexpected = $DB->count_records_select(
-            'course_modules',
-            'course = :cid AND completion > 0 AND completionexpected > 0',
-            ['cid' => $course->id]
-        );
-
-        $row = [
-            'id' => (int) $course->id,
-            'format' => $course->format,
-            'startdate_weeks_ago' => $startweeksago,
-            'enablecompletion' => (bool) $course->enablecompletion,
-            'active_enrolments' => count(cohort::active((int) $course->id)),
-            'activity_count' => (int) $activitycount,
-            'activities_with_completion' => (int) $withcompletion,
-            'activities_with_completionexpected' => (int) $withexpected,
-            'activities_completion_no_expected' => (int) $withcompletion - (int) $withexpected,
-            'block_atrisk_instance' => $hasblock ? $this->describe_block_instance((int) $course->id) : null,
-        ];
-
-        if ($includenames) {
-            $row['shortname'] = $course->shortname;
-            $row['fullname'] = $course->fullname;
+        [$insql, $inparams] = $DB->get_in_or_equal($courseids, SQL_PARAMS_NAMED, 'cm');
+        $sql = "SELECT course,
+                       COUNT(*) AS cnt,
+                       SUM(CASE WHEN completion > 0 THEN 1 ELSE 0 END) AS withcompletion,
+                       SUM(CASE WHEN completion > 0 AND completionexpected > 0 THEN 1 ELSE 0 END) AS withexpected
+                  FROM {course_modules}
+                 WHERE course {$insql}
+              GROUP BY course";
+        $out = [];
+        foreach ($DB->get_records_sql($sql, $inparams) as $r) {
+            $out[(int) $r->course] = [
+                'count' => (int) $r->cnt,
+                'withcompletion' => (int) $r->withcompletion,
+                'withexpected' => (int) $r->withexpected,
+            ];
         }
-
-        return $row;
+        return $out;
     }
 
     /**
-     * Describe the per-instance config of a course's atrisk block.
+     * Bulk-load the raw configdata blob for each course's atrisk block. One query.
      *
-     * @param int $courseid Course ID.
+     * @param int[] $courseids
+     * @return array<int,string> courseid → configdata (only courses that have one).
+     */
+    private function block_configdata(array $courseids): array {
+        global $DB;
+        if (empty($courseids)) {
+            return [];
+        }
+        [$insql, $inparams] = $DB->get_in_or_equal($courseids, SQL_PARAMS_NAMED, 'bc');
+        $sql = "SELECT ctx.instanceid AS courseid, bi.configdata
+                  FROM {block_instances} bi
+                  JOIN {context} ctx ON ctx.id = bi.parentcontextid
+                 WHERE bi.blockname = 'atrisk'
+                   AND ctx.contextlevel = :clevel
+                   AND ctx.instanceid {$insql}";
+        $params = array_merge(['clevel' => CONTEXT_COURSE], $inparams);
+        $out = [];
+        foreach ($DB->get_records_sql($sql, $params) as $r) {
+            $out[(int) $r->courseid] = (string) $r->configdata;
+        }
+        return $out;
+    }
+
+    /**
+     * Describe a block instance's per-instance config from its raw configdata.
+     *
+     * @param string|null $configdata Base64+serialized configdata, or null.
      * @return array Per-instance configuration summary.
      */
-    private function describe_block_instance(int $courseid): array {
-        global $DB;
-        $row = $DB->get_record_sql(
-            "SELECT bi.configdata
-               FROM {block_instances} bi
-               JOIN {context} ctx ON ctx.id = bi.parentcontextid
-              WHERE bi.blockname = 'atrisk'
-                AND ctx.contextlevel = :clevel
-                AND ctx.instanceid = :courseid",
-            ['clevel' => CONTEXT_COURSE, 'courseid' => $courseid]
-        );
+    private function describe_configdata(?string $configdata): array {
         $config = new \stdClass();
-        if ($row !== false && !empty($row->configdata)) {
-            $decoded = unserialize(base64_decode($row->configdata));
+        if (!empty($configdata)) {
+            $decoded = unserialize(base64_decode($configdata));
             if (is_object($decoded)) {
                 $config = $decoded;
             }
@@ -234,83 +365,99 @@ final class readiness_report {
     }
 
     /**
-     * Top-level summary of the surveyed courses.
+     * A fresh accumulator for the running summary and warning counters.
      *
-     * @param array $courses Per-course rows from {@see self::survey_courses()}.
-     * @return array Aggregate counts.
+     * @return array Mutable counter set.
      */
-    private function summarise(array $courses): array {
-        $total = count($courses);
-        $withblock = 0;
-        $withcompletion = 0;
-        $withatleast1expected = 0;
-        foreach ($courses as $c) {
-            if ($c['block_atrisk_instance'] !== null) {
-                $withblock++;
-            }
-            if (!empty($c['enablecompletion'])) {
-                $withcompletion++;
-            }
-            if ($c['activities_with_completionexpected'] > 0) {
-                $withatleast1expected++;
-            }
-        }
+    private function fresh_accumulator(): array {
         return [
-            'total_courses' => $total,
-            'with_block_instance' => $withblock,
-            'with_completion_enabled' => $withcompletion,
-            'with_at_least_one_completionexpected' => $withatleast1expected,
+            'hardfloor' => (int) (get_config('block_atrisk', 'cohort_hard_floor') ?: 10),
+            'total' => 0,
+            'withblock' => 0,
+            'withcompletion' => 0,
+            'withexpected' => 0,
+            'belowhard' => 0,
+            'completionnoexp' => 0,
+            'awkward' => 0,
         ];
     }
 
     /**
-     * Derive aggregate warnings flagging structural mismatches likely to
-     * produce false positives once the block runs.
+     * Fold one row into the running summary/warning counters.
      *
-     * @param array $courses Per-course rows from {@see self::survey_courses()}.
+     * @param array $acc Accumulator (by reference).
+     * @param array $row A per-course report row.
+     */
+    private function accumulate(array &$acc, array $row): void {
+        $acc['total']++;
+        if ($row['block_atrisk_instance'] !== null) {
+            $acc['withblock']++;
+        }
+        if (!empty($row['enablecompletion'])) {
+            $acc['withcompletion']++;
+        }
+        if ($row['activities_with_completionexpected'] > 0) {
+            $acc['withexpected']++;
+        }
+        if ($row['active_enrolments'] < $acc['hardfloor']) {
+            $acc['belowhard']++;
+        }
+        if (!empty($row['enablecompletion']) && $row['activities_completion_no_expected'] > 0) {
+            $acc['completionnoexp']++;
+        }
+        if (in_array($row['format'], ['social', 'singleactivity'], true)) {
+            $acc['awkward']++;
+        }
+    }
+
+    /**
+     * Finalize the top-level course summary from the accumulator.
+     *
+     * @param array $acc Accumulator.
+     * @return array Aggregate counts.
+     */
+    private function finalize_summary(array $acc): array {
+        return [
+            'total_courses' => $acc['total'],
+            'with_block_instance' => $acc['withblock'],
+            'with_completion_enabled' => $acc['withcompletion'],
+            'with_at_least_one_completionexpected' => $acc['withexpected'],
+        ];
+    }
+
+    /**
+     * Finalize the warnings list from the accumulator. Same codes and
+     * messages as the pre-streaming implementation.
+     *
+     * @param array $acc Accumulator.
      * @return array List of warning descriptors.
      */
-    private function derive_warnings(array $courses): array {
+    private function finalize_warnings(array $acc): array {
         $warnings = [];
-
-        $hardfloor = (int) (get_config('block_atrisk', 'cohort_hard_floor') ?: 10);
-        $belowhard = 0;
-        $completionnoexp = 0;
-        $awkwardformats = 0;
-        foreach ($courses as $c) {
-            if ($c['active_enrolments'] < $hardfloor) {
-                $belowhard++;
-            }
-            if (!empty($c['enablecompletion']) && $c['activities_completion_no_expected'] > 0) {
-                $completionnoexp++;
-            }
-            if (in_array($c['format'], ['social', 'singleactivity'], true)) {
-                $awkwardformats++;
-            }
-        }
-        if ($belowhard > 0) {
+        $hardfloor = $acc['hardfloor'];
+        if ($acc['belowhard'] > 0) {
             $warnings[] = [
                 'code' => 'below_hard_floor',
-                'count' => $belowhard,
-                'message' => "{$belowhard} course(s) below the hard floor "
+                'count' => $acc['belowhard'],
+                'message' => "{$acc['belowhard']} course(s) below the hard floor "
                     . "(active enrolments < {$hardfloor}). Peer-relative "
                     . "signals auto-disable on these.",
             ];
         }
-        if ($completionnoexp > 0) {
+        if ($acc['completionnoexp'] > 0) {
             $warnings[] = [
                 'code' => 'completion_no_expected',
-                'count' => $completionnoexp,
-                'message' => "{$completionnoexp} course(s) have completion-tracked "
+                'count' => $acc['completionnoexp'],
+                'message' => "{$acc['completionnoexp']} course(s) have completion-tracked "
                     . "activities without completionexpected dates. The "
                     . "assessment-miss signal will not fire on those activities.",
             ];
         }
-        if ($awkwardformats > 0) {
+        if ($acc['awkward'] > 0) {
             $warnings[] = [
                 'code' => 'awkward_format',
-                'count' => $awkwardformats,
-                'message' => "{$awkwardformats} course(s) use a format "
+                'count' => $acc['awkward'],
+                'message' => "{$acc['awkward']} course(s) use a format "
                     . "(social, singleactivity) where peer-relative comparisons "
                     . "may be structurally less informative.",
             ];
