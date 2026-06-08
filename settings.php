@@ -130,6 +130,12 @@ if ($ADMIN->fulltree) {
         get_string('settings_sensitivity_preset_enabled_desc', 'block_atrisk'),
         1
     ));
+    $settings->add(new admin_setting_configcheckbox(
+        'block_atrisk/skip_ended_courses',
+        get_string('settings_skip_ended_courses', 'block_atrisk'),
+        get_string('settings_skip_ended_courses_desc', 'block_atrisk'),
+        1
+    ));
 
     // Breaks calendar (institutional holidays / term breaks).
     $settings->add(new admin_setting_heading(

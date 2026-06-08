@@ -164,7 +164,37 @@ final class engine_config {
             ],
             'breaks' => $breakranges,
             'course_shape' => $effectiveshape,
+            'skip_ended_courses' => self::skip_ended_courses($instance),
         ];
+    }
+
+    /**
+     * Resolve the effective "skip courses that have ended" flag: the site
+     * setting (default on) optionally overridden per block instance.
+     *
+     * A course past its end date flags every enrolled student for
+     * inactivity, since nobody logs into a finished course — pure noise.
+     * Suppressing it is on by default; admins can disable site-wide and
+     * teachers can override per course (tri-state 'site' / '1' / '0').
+     *
+     * @param \stdClass|null $instance Per-instance configdata, or null.
+     * @return bool True when ended courses should be suppressed.
+     */
+    public static function skip_ended_courses(?\stdClass $instance = null): bool {
+        // Unset site config (false) means "never configured" → default on.
+        $siteraw = get_config('block_atrisk', 'skip_ended_courses');
+        $enabled = ($siteraw === false) ? true : (bool) $siteraw;
+
+        if ($instance !== null && isset($instance->skip_ended_courses)) {
+            $override = (string) $instance->skip_ended_courses;
+            if ($override === '1') {
+                $enabled = true;
+            } else if ($override === '0') {
+                $enabled = false;
+            }
+            // Anything else (including 'site' or unset) → inherit site default.
+        }
+        return $enabled;
     }
 
     /**

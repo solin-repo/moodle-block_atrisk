@@ -84,8 +84,12 @@ if (
     $engineconfig['groupid'] = $groupaccess['groupids'];
 }
 
+// Suppress the list for courses that have ended (mirrors the in-block view).
+$courseended = !empty($engineconfig['skip_ended_courses'])
+    && \block_atrisk\local\flag_engine::course_has_ended((int) $course->enddate);
+
 $engine = new \block_atrisk\local\flag_engine();
-if ($nogroups) {
+if ($nogroups || $courseended) {
     $flagged = [];
 } else {
     $flagged = $engine->evaluate_course($courseid, $engineconfig);
@@ -146,7 +150,9 @@ $rendercontext = [
     'preset' => $preset,
     'completionenabled' => !empty($course->enablecompletion),
     'showpresetcontrol' => $showpresetcontrol,
-    'emptyreason' => $nogroups ? 'nogroupassignment' : ($total === 0 ? 'noflagged' : 'none'),
+    'emptyreason' => $nogroups
+        ? 'nogroupassignment'
+        : ($courseended ? 'courseended' : ($total === 0 ? 'noflagged' : 'none')),
     'expandall' => $expandall,
     'expandallurl' => $expandallurl,
     'presetreturnurl' => $returnurl,

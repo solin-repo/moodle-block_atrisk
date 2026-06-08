@@ -451,4 +451,86 @@ final class flag_engine_test extends advanced_testcase {
         $this->assertNotNull($rank);
         $this->assertLessThan(50, $rank);
     }
+
+    /**
+     * A course whose end date has passed produces nothing but noise — every
+     * student is idle because the course is over. When skip_ended_courses is
+     * on, the engine returns an empty list regardless of fired signals.
+     */
+    public function test_ended_course_is_suppressed(): void {
+        $this->resetAfterTest();
+        $now = 1_700_000_000;
+        $course = $this->getDataGenerator()->create_course([
+            'enablecompletion' => 1,
+            'startdate' => $now - 20 * WEEKSECS,
+            'enddate' => $now - 2 * WEEKSECS,
+        ]);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, 'student');
+        // No lastaccess → inactivity would otherwise fire.
+
+        $engine = new flag_engine();
+        $flagged = $engine->evaluate_course($course->id, ['skip_ended_courses' => true], $now);
+        $this->assertSame([], $flagged);
+    }
+
+    public function test_ended_course_not_suppressed_when_disabled(): void {
+        $this->resetAfterTest();
+        $now = 1_700_000_000;
+        $course = $this->getDataGenerator()->create_course([
+            'enablecompletion' => 1,
+            'startdate' => $now - 20 * WEEKSECS,
+            'enddate' => $now - 2 * WEEKSECS,
+        ]);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, 'student');
+
+        $engine = new flag_engine();
+        $flagged = $engine->evaluate_course($course->id, ['skip_ended_courses' => false], $now);
+        $this->assertCount(1, $flagged);
+        $this->assertEquals($student->id, $flagged[0]->userid);
+    }
+
+    public function test_future_enddate_is_not_suppressed(): void {
+        $this->resetAfterTest();
+        $now = 1_700_000_000;
+        $course = $this->getDataGenerator()->create_course([
+            'enablecompletion' => 1,
+            'startdate' => $now - 20 * WEEKSECS,
+            'enddate' => $now + 2 * WEEKSECS,
+        ]);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, 'student');
+
+        $engine = new flag_engine();
+        $flagged = $engine->evaluate_course($course->id, ['skip_ended_courses' => true], $now);
+        $this->assertCount(1, $flagged);
+    }
+
+    public function test_zero_enddate_is_not_suppressed(): void {
+        $this->resetAfterTest();
+        $now = 1_700_000_000;
+        $course = $this->getDataGenerator()->create_course([
+            'enablecompletion' => 1,
+            'startdate' => $now - 20 * WEEKSECS,
+            'enddate' => 0,
+        ]);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, 'student');
+
+        $engine = new flag_engine();
+        $flagged = $engine->evaluate_course($course->id, ['skip_ended_courses' => true], $now);
+        $this->assertCount(1, $flagged);
+    }
+
+    /**
+     * The course_has_ended helper compares enddate against the reference
+     * time, treating a zero/unset end date as "never ends".
+     */
+    public function test_course_has_ended_helper(): void {
+        $now = 1_700_000_000;
+        $this->assertTrue(flag_engine::course_has_ended($now - 1, $now));
+        $this->assertFalse(flag_engine::course_has_ended($now + 1, $now));
+        $this->assertFalse(flag_engine::course_has_ended(0, $now));
+    }
 }

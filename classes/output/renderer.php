@@ -334,6 +334,7 @@ class renderer extends \plugin_renderer_base {
         $reason = $context['emptyreason'] ?? 'none';
         $key = match ($reason) {
             'nogroupassignment' => 'empty_no_group_assignment',
+            'courseended' => 'empty_course_ended',
             'noenrolments' => 'empty_no_enrolments',
             'calibrating' => 'empty_calibrating',
             default => 'empty_none_flagged',

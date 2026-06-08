@@ -137,4 +137,39 @@ final class engine_config_test extends advanced_testcase {
             );
         }
     }
+
+    /**
+     * The engine config exposes the resolved "skip ended courses" flag,
+     * defaulting to on when the site setting has never been written.
+     */
+    public function test_skip_ended_courses_defaults_on(): void {
+        $this->resetAfterTest();
+        $cfg = engine_config::build_for_preset('default');
+        $this->assertTrue($cfg['skip_ended_courses']);
+    }
+
+    public function test_skip_ended_courses_site_off(): void {
+        $this->resetAfterTest();
+        set_config('skip_ended_courses', 0, 'block_atrisk');
+        $cfg = engine_config::build_for_preset('default');
+        $this->assertFalse($cfg['skip_ended_courses']);
+    }
+
+    public function test_skip_ended_courses_instance_override(): void {
+        $this->resetAfterTest();
+
+        // Site on, instance forces off.
+        set_config('skip_ended_courses', 1, 'block_atrisk');
+        $off = engine_config::build_for_preset('default', (object) ['skip_ended_courses' => '0']);
+        $this->assertFalse($off['skip_ended_courses']);
+
+        // Site off, instance forces on.
+        set_config('skip_ended_courses', 0, 'block_atrisk');
+        $on = engine_config::build_for_preset('default', (object) ['skip_ended_courses' => '1']);
+        $this->assertTrue($on['skip_ended_courses']);
+
+        // The 'site' sentinel inherits the site setting (currently off).
+        $inherit = engine_config::build_for_preset('default', (object) ['skip_ended_courses' => 'site']);
+        $this->assertFalse($inherit['skip_ended_courses']);
+    }
 }

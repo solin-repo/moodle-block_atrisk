@@ -99,6 +99,7 @@ final class cached_flag_engine {
             'calibration' => $config['calibration'] ?? [],
             'groupid' => $config['groupid'] ?? 0,
             'breaks' => $config['breaks'] ?? [],
+            'skip_ended_courses' => !empty($config['skip_ended_courses']),
         ];
         ksort($signature);
         return $courseid . '_' . sha1(json_encode($signature));
