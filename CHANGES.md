@@ -4,6 +4,25 @@ All notable changes to `block_atrisk` (Solin Early Warning) are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] — 2026-06-08
+
+### Fixed
+- **Only currently-active students are monitored.** The active-enrolment
+  query now applies Moodle's standard enrolment time-window in addition to
+  the existing status check, so students whose enrolment has expired
+  (`timeend` in the past) or has not started yet (`timestart` in the future)
+  are no longer flagged. Suspended, deleted, and course-completed users were
+  already excluded; this closes the remaining gap where a finished course's
+  expired enrolments were still surfaced.
+
+### Added
+- **Skip courses that have ended.** When a course's end date has passed the
+  block no longer flags the whole roster for inactivity; it shows a distinct
+  "this course has ended" notice instead. Controlled site-wide by the new
+  *Skip courses that have ended* setting (on by default) with a per-block
+  override (inherit / force on / force off). Courses with no end date are
+  unaffected.
+
 ## [1.0.2] — 2026-06-03
 
 ### Changed

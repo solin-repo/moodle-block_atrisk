@@ -153,10 +153,26 @@ configurable site-wide (default 2 weeks gated, 2 weeks tentative).
 
 The block also auto-disables peer-relative signals when the course has
 fewer than **10** active enrolments (hard floor) and warns when the
-count is between 10 and 19 (soft floor). "Active enrolment" means
-students with an active, non-suspended course enrolment — unrelated to
+count is between 10 and 19 (soft floor). "Active enrolment" follows
+Moodle's standard definition: an enabled enrolment instance, an active
+(non-suspended) `user_enrolments` row, and the current time inside the
+enrolment's start/end window. Students whose enrolment has expired
+(`timeend` in the past) or has not started yet (`timestart` in the
+future) are therefore not monitored, alongside the already-excluded
+suspended, deleted, and course-completed users. This is unrelated to
 the Moodle **cohort** entity (`mdl_cohort` / *Site administration →
 Users → Cohorts*), which this block does not use.
+
+## Courses that have ended
+
+A course whose **end date** has passed flags its entire roster for
+inactivity — nobody logs into a finished course — which is pure noise.
+By default the block shows nothing once the course end date is in the
+past, displaying a short "this course has ended" notice instead. The
+site setting *Skip courses that have ended* (on by default) controls
+this globally, and each block can override it under **Advanced** in the
+block's configuration (inherit / force on / force off). Courses with no
+end date set are never treated as ended.
 
 ## Groups
 

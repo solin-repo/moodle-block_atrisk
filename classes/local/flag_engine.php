@@ -71,13 +71,18 @@ final class flag_engine {
         $groupid = $config['groupid'] ?? null;
         $calibrationcfg = $config['calibration'] ?? ['gatedweeks' => 2, 'tentativeweeks' => 2];
 
+        // A course past its end date flags its whole roster for inactivity
+        // (nobody logs into a finished course), so when suppression is on we
+        // surface nothing. Checked before the cohort query to skip the work.
+        $course = $DB->get_record('course', ['id' => $courseid], 'id, startdate, enddate', MUST_EXIST);
+        if (!empty($config['skip_ended_courses']) && self::course_has_ended((int) $course->enddate, $now)) {
+            return [];
+        }
+
         $userids = cohort::active($courseid, $groupid);
         if (empty($userids)) {
             return [];
         }
-
-        // Per-user calibration phase.
-        $course = $DB->get_record('course', ['id' => $courseid], 'id, startdate', MUST_EXIST);
         $window = new calibration_window(
             (int) ($calibrationcfg['gatedweeks'] ?? 2),
             (int) ($calibrationcfg['tentativeweeks'] ?? 2)
@@ -192,6 +197,22 @@ final class flag_engine {
             return strcasecmp($an, $bn);
         });
         return $flagged;
+    }
+
+    /**
+     * Whether a course's end date has passed relative to the reference time.
+     *
+     * A zero (unset) end date means the course never ends, so it is never
+     * treated as ended. Shared by the engine's suppression short-circuit
+     * and the render layer's distinct "course has ended" empty state.
+     *
+     * @param int $enddate The course's enddate (0 = no end date).
+     * @param int|null $now Reference timestamp; defaults to {@see time()}.
+     * @return bool True when the course has ended.
+     */
+    public static function course_has_ended(int $enddate, ?int $now = null): bool {
+        $now = $now ?? time();
+        return $enddate > 0 && $enddate < $now;
     }
 
     /**

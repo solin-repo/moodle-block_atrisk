@@ -172,6 +172,19 @@ class block_atrisk extends block_base {
             $config['groupid'] = $groupaccess['groupids'];
         }
 
+        // Courses past their end date flag the whole roster for inactivity;
+        // when suppression is on, show a distinct "course has ended" empty
+        // state instead of a list (mirrors the engine short-circuit).
+        if (
+            !empty($config['skip_ended_courses'])
+            && \block_atrisk\local\flag_engine::course_has_ended((int) $COURSE->enddate)
+        ) {
+            $rendercontext['emptyreason'] = 'courseended';
+            $renderer = $this->page->get_renderer('block_atrisk');
+            $this->content->text = $renderer->render_flagged_list([], $rendercontext);
+            return $this->content;
+        }
+
         // Surface the active break (if any) as an informational banner
         // alongside the flagged list — the list itself stays visible so
         // a teacher preparing for the post-break week can still see

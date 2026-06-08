@@ -97,6 +97,47 @@ final class cohort_test extends advanced_testcase {
         $this->assertEquals([], cohort::active($course->id));
     }
 
+    public function test_active_cohort_excludes_expired_enrolment(): void {
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+        $active = $this->getDataGenerator()->create_user();
+        $expired = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($active->id, $course->id, 'student');
+        // Enrolment whose window has already closed (timeend in the past).
+        // The enrolment row is still ENROL_USER_ACTIVE — only the "keep
+        // user enrolled" expiry action was in effect — so the status=0
+        // filter alone does not catch it.
+        $this->getDataGenerator()->enrol_user(
+            $expired->id,
+            $course->id,
+            'student',
+            'manual',
+            0,
+            time() - DAYSECS
+        );
+
+        $this->assertEquals([$active->id], cohort::active($course->id));
+    }
+
+    public function test_active_cohort_excludes_not_yet_started_enrolment(): void {
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+        $active = $this->getDataGenerator()->create_user();
+        $future = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($active->id, $course->id, 'student');
+        // Enrolment that has not started yet (timestart in the future).
+        $this->getDataGenerator()->enrol_user(
+            $future->id,
+            $course->id,
+            'student',
+            'manual',
+            time() + WEEKSECS,
+            0
+        );
+
+        $this->assertEquals([$active->id], cohort::active($course->id));
+    }
+
     public function test_active_cohort_with_group_filter(): void {
         $this->resetAfterTest();
         $course = $this->getDataGenerator()->create_course();
@@ -230,6 +271,24 @@ final class cohort_test extends advanced_testcase {
         $this->assertSame(2, $counts[(int) $ca->id]);
         $this->assertSame(1, $counts[(int) $cb->id]);
         $this->assertSame(0, $counts[(int) $cc->id]);
+    }
+
+    /**
+     * The bulk count must apply the same enrolment time-window as active():
+     * an expired enrolment (timeend in the past) is not counted.
+     */
+    public function test_active_counts_excludes_expired_enrolment(): void {
+        $this->resetAfterTest();
+        $gen = $this->getDataGenerator();
+        $course = $gen->create_course();
+        $active = $gen->create_user();
+        $expired = $gen->create_user();
+        $gen->enrol_user($active->id, $course->id, 'student');
+        $gen->enrol_user($expired->id, $course->id, 'student', 'manual', 0, time() - DAYSECS);
+
+        $counts = cohort::active_counts([(int) $course->id]);
+        $this->assertSame(1, $counts[(int) $course->id]);
+        $this->assertSame(count(cohort::active($course->id)), $counts[(int) $course->id]);
     }
 
     /**

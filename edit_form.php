@@ -108,6 +108,34 @@ class block_atrisk_edit_form extends block_edit_form {
         );
         $mform->setAdvanced('config_peer_scope_desc');
 
+        // Skip-ended-courses override (tri-state: inherit site / force on /
+        // force off). A course past its end date flags every student for
+        // inactivity; suppression keeps the block quiet once teaching stops.
+        $siteskip = \block_atrisk\local\engine_config::skip_ended_courses();
+        $sitelabel = $siteskip
+            ? get_string('config_skip_ended_courses_inherit_on', 'block_atrisk')
+            : get_string('config_skip_ended_courses_inherit_off', 'block_atrisk');
+        $mform->addElement(
+            'select',
+            'config_skip_ended_courses',
+            get_string('config_skip_ended_courses', 'block_atrisk'),
+            [
+                'site' => $sitelabel,
+                '1' => get_string('config_skip_ended_courses_on', 'block_atrisk'),
+                '0' => get_string('config_skip_ended_courses_off', 'block_atrisk'),
+            ]
+        );
+        $mform->setType('config_skip_ended_courses', PARAM_ALPHANUM);
+        $mform->setDefault('config_skip_ended_courses', 'site');
+        $mform->setAdvanced('config_skip_ended_courses');
+        $mform->addElement(
+            'static',
+            'config_skip_ended_courses_desc',
+            '',
+            get_string('config_skip_ended_courses_desc', 'block_atrisk')
+        );
+        $mform->setAdvanced('config_skip_ended_courses_desc');
+
         // Course-shape override (FR-106e). Tri-state: Auto-detect (default) /
         // Force-set as <shape> / Force-disable per-shape adjustments. The
         // detected shape and confidence are surfaced as static help text so

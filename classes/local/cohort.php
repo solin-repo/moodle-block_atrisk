@@ -80,10 +80,20 @@ final class cohort {
         $context = \context_course::instance($courseid);
         [$rolesql, $roleparams] = $DB->get_in_or_equal($roleids, SQL_PARAMS_NAMED, 'r');
 
+        // Enrolment must be active *now*: not suspended, and within its
+        // time window. This mirrors Moodle's canonical active-enrolment
+        // definition (see {@see get_enrolled_join()}). The status=0 filter
+        // alone misses enrolments whose duration has elapsed but whose
+        // expiry action was "keep user enrolled" (timeend in the past),
+        // and scheduled enrolments that have not started yet (timestart in
+        // the future) — both must be excluded from the at-risk surface.
+        $now = time();
         $sqlbase = "SELECT DISTINCT u.id
                     FROM {user} u
                     JOIN {role_assignments} ra ON ra.userid = u.id AND ra.contextid = :ctxid
                     JOIN {user_enrolments} ue ON ue.userid = u.id AND ue.status = 0
+                                              AND ue.timestart <= :now1
+                                              AND (ue.timeend = 0 OR ue.timeend > :now2)
                     JOIN {enrol} e ON e.id = ue.enrolid AND e.courseid = :courseid AND e.status = 0
                     LEFT JOIN {course_completions} cc ON cc.userid = u.id
                                                        AND cc.course = :coursecompletecid
@@ -96,6 +106,8 @@ final class cohort {
             'ctxid' => $context->id,
             'courseid' => $courseid,
             'coursecompletecid' => $courseid,
+            'now1' => $now,
+            'now2' => $now,
         ], $roleparams);
 
         $gids = [];
@@ -158,10 +170,14 @@ final class cohort {
         // assignment is scoped to each course's own context via the context
         // join (ctx.instanceid = course, contextlevel = COURSE), matching
         // active()'s ra.contextid = <course context> exactly.
+        // Same active-enrolment time-window as active() (timestart/timeend).
+        $now = time();
         $sql = "SELECT e.courseid, COUNT(DISTINCT u.id) AS activecount
                   FROM {enrol} e
                   JOIN {context} ctx ON ctx.instanceid = e.courseid AND ctx.contextlevel = :clevel
                   JOIN {user_enrolments} ue ON ue.enrolid = e.id AND ue.status = 0
+                                            AND ue.timestart <= :now1
+                                            AND (ue.timeend = 0 OR ue.timeend > :now2)
                   JOIN {user} u ON u.id = ue.userid
                   JOIN {role_assignments} ra ON ra.userid = u.id
                                             AND ra.contextid = ctx.id
@@ -175,7 +191,11 @@ final class cohort {
                    AND u.suspended = 0
                    AND cc.id IS NULL
               GROUP BY e.courseid";
-        $params = array_merge(['clevel' => CONTEXT_COURSE], $roleparams, $cidparams);
+        $params = array_merge(
+            ['clevel' => CONTEXT_COURSE, 'now1' => $now, 'now2' => $now],
+            $roleparams,
+            $cidparams
+        );
 
         foreach ($DB->get_records_sql($sql, $params) as $row) {
             $counts[(int) $row->courseid] = (int) $row->activecount;
