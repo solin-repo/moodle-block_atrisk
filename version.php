@@ -25,8 +25,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'block_atrisk';
-$plugin->version   = 2026060801;
-$plugin->release   = '1.0.3';
+$plugin->version   = 2026061001;
+$plugin->release   = '1.0.4';
 $plugin->maturity  = MATURITY_BETA;
 $plugin->requires  = 2025100600; // Moodle 5.1 baseline; blocks install on 5.0 (untested).
 $plugin->supported = [501, 502]; // Combined 5.1 -> 5.2 range; excludes 5.0 (FR-181).
