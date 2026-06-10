@@ -1,9 +1,11 @@
 # Solin Early Warning (`block_atrisk`)
 
-A Moodle block that surfaces, in a teacher's course view, a ranked list
-of students at risk of disengagement. Multi-signal heuristics over data
-Moodle already collects. No machine-learning backend, no email blast, no
-analytics tool dependency.
+A Moodle block that shows teachers, inside the course, which students
+may be falling behind and why. Flags are ranked by severity, and every
+flag states its reason in plain language ("no login for 9 days",
+"missed Assignment 3, due 28 April"). Simple, configurable rules over
+data Moodle already has: no AI, no machine-learning backend, no email
+blasts. Signals you can read, thresholds you can tune.
 
 ![Block in a course view, default sensitivity, one student expanded showing reasons and actions](docs/screenshots/flagged-list-default.png)
 
