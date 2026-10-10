@@ -29,10 +29,10 @@ use tool_dataprivacy\task\process_data_request_task;
  * exercised by provider_test).
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\privacy\provider
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\privacy\provider::class)]
 final class dataprivacy_request_test extends advanced_testcase {
     /**
      * Seed a dismissal row.

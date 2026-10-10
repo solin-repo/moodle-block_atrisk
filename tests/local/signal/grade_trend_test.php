@@ -22,10 +22,10 @@ use advanced_testcase;
  * Unit tests for the grade-trend signal classifier.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\signal\grade_trend
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\signal\grade_trend::class)]
 final class grade_trend_test extends advanced_testcase {
     /**
      * Insert one grade-snapshot row.

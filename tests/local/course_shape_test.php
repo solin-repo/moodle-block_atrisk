@@ -27,10 +27,10 @@ use advanced_testcase;
  * the engine_config integration that applies those adjustments.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\course_shape
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\course_shape::class)]
 final class course_shape_test extends advanced_testcase {
     /**
      * Helper: build a synchronous-cohort feature bundle.
@@ -434,5 +434,125 @@ final class course_shape_test extends advanced_testcase {
             $cfg['thresholds']['inactivity']['days']
         );
         $this->assertSame(course_shape::SHAPE_SELF_PACED, $cfg['course_shape']);
+    }
+
+    /**
+     * Remaining classification branches: self-paced confidence levels, an
+     * exact-index enrolment IQR, durations derived from expected dates, and
+     * the unknown fall-through for enrolments without any activity.
+     */
+    public function test_classify_remaining_branches(): void {
+        $day = DAYSECS;
+        $start = 1_700_000_000;
+
+        // Rolling enrolments AND no expected dates, large sample → high.
+        $result = course_shape::classify([
+            'enrolment_count' => 5,
+            'enrolment_timestarts' => [$start, $start + 40 * $day, $start + 80 * $day, $start + 120 * $day, $start + 160 * $day],
+            'activity_count' => 10,
+            'completionexpected_count' => 0,
+        ]);
+        $this->assertSame(course_shape::SHAPE_SELF_PACED, $result['shape']);
+        $this->assertSame(course_shape::CONFIDENCE_HIGH, $result['confidence']);
+        // Five timestamps put Q1 and Q3 on exact indexes: 120 - 40 days.
+        $this->assertSame(80, $result['features']['enrolment_iqr_days']);
+
+        // Same shape on a small sample → low confidence.
+        $result = course_shape::classify([
+            'enrolment_count' => 2,
+            'enrolment_timestarts' => [$start, $start + 60 * $day],
+            'activity_count' => 10,
+            'completionexpected_count' => 0,
+        ]);
+        $this->assertSame(course_shape::SHAPE_SELF_PACED, $result['shape']);
+        $this->assertSame(course_shape::CONFIDENCE_LOW, $result['confidence']);
+
+        // No end date: duration is the span of the expected dates.
+        $result = course_shape::classify([
+            'enrolment_count' => 1, 'activity_count' => 2, 'completionexpected_count' => 2,
+            'completionexpected_dates' => [$start + 3 * $day, $start + 10 * $day],
+        ]);
+        $this->assertSame(7, $result['features']['course_duration_days']);
+
+        // A start date and a single later expected date.
+        $result = course_shape::classify([
+            'enrolment_count' => 1, 'activity_count' => 1, 'completionexpected_count' => 1,
+            'completionexpected_dates' => [$start + 9 * $day], 'course_startdate' => $start,
+        ]);
+        $this->assertSame(9, $result['features']['course_duration_days']);
+
+        // A single expected date before the start date gives no duration.
+        $result = course_shape::classify([
+            'enrolment_count' => 1, 'activity_count' => 1, 'completionexpected_count' => 1,
+            'completionexpected_dates' => [$start - $day], 'course_startdate' => $start,
+        ]);
+        $this->assertNull($result['features']['course_duration_days']);
+
+        // One enrolment and no activities: nothing to classify on.
+        $result = course_shape::classify(['enrolment_count' => 1, 'enrolment_timestarts' => [$start]]);
+        $this->assertSame(course_shape::SHAPE_UNKNOWN, $result['shape']);
+        $this->assertSame(course_shape::CONFIDENCE_LOW, $result['confidence']);
+    }
+
+    /**
+     * Features are gathered from real enrolments and activities; a missing
+     * course yields an empty bundle.
+     */
+    public function test_gather_features(): void {
+        global $CFG;
+        $this->resetAfterTest();
+        $start = time() - 10 * WEEKSECS;
+        $course = $this->getDataGenerator()->create_course(['enablecompletion' => 1, 'startdate' => $start]);
+        $this->getDataGenerator()->create_and_enrol($course, 'student', null, 'manual', $start);
+        $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
+        $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id, 'completion' => COMPLETION_TRACKING_MANUAL, 'completionexpected' => $start + WEEKSECS,
+        ]);
+        $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id, 'completion' => COMPLETION_TRACKING_MANUAL,
+        ]);
+        $this->getDataGenerator()->create_module('page', ['course' => $course->id]);
+
+        $features = course_shape::gather_features((int) $course->id);
+        $this->assertSame(2, $features['enrolment_count']);
+        $this->assertSame([$start], $features['enrolment_timestarts']);
+        $this->assertSame(2, $features['activity_count']);
+        $this->assertSame([$start + WEEKSECS], $features['completionexpected_dates']);
+
+        // Without gradebook roles, the student archetype is used instead.
+        $CFG->gradebookroles = '';
+        $this->assertSame(2, course_shape::gather_features((int) $course->id)['enrolment_count']);
+
+        $empty = course_shape::gather_features(999999);
+        $this->assertSame(0, $empty['enrolment_count']);
+        $this->assertSame(0, $empty['course_startdate']);
+    }
+
+    /**
+     * A stored unknown shape is ignored even when its confidence is not low.
+     */
+    public function test_effective_shape_ignores_unknown(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+        $DB->insert_record('block_atrisk_course_shape', (object) [
+            'courseid' => $course->id, 'shape' => course_shape::SHAPE_UNKNOWN,
+            'confidence' => course_shape::CONFIDENCE_MEDIUM, 'features_json' => '{}', 'lastcomputed' => time(),
+        ]);
+        $this->assertNull(course_shape::effective_shape((int) $course->id));
+    }
+
+    /**
+     * Only courses carrying the block are listed.
+     */
+    public function test_courses_with_block(): void {
+        $this->resetAfterTest();
+        $with = $this->getDataGenerator()->create_course();
+        $this->getDataGenerator()->create_course();
+        $this->getDataGenerator()->get_plugin_generator('block_atrisk')->create_instance([
+            'parentcontextid' => \context_course::instance($with->id)->id,
+        ]);
+        $this->assertSame([(int) $with->id], course_shape::courses_with_block());
     }
 }

@@ -22,10 +22,10 @@ use advanced_testcase;
  * Unit tests for the readiness data export generator.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\readiness_report
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\readiness_report::class)]
 final class readiness_report_test extends advanced_testcase {
     public function test_schema_version_is_stable(): void {
         $this->resetAfterTest();
@@ -193,5 +193,77 @@ final class readiness_report_test extends advanced_testcase {
             'timecreated' => $now,
             'timemodified' => $now,
         ]);
+    }
+
+    /**
+     * Settings that were never set are reported as null rather than false.
+     */
+    public function test_unset_settings_are_null(): void {
+        $this->resetAfterTest();
+        unset_config('breaks_calendar', 'block_atrisk');
+        set_config('display_top_n', 7, 'block_atrisk');
+        $settings = (new readiness_report())->build()['settings'];
+        $this->assertNull($settings['breaks_calendar']);
+        $this->assertSame('7', $settings['display_top_n']);
+    }
+
+    /**
+     * Rows are identical whether the cursor is processed in one chunk or in
+     * many chunks with a remainder.
+     */
+    public function test_chunk_boundaries_do_not_change_rows(): void {
+        $this->resetAfterTest();
+        for ($i = 0; $i < 5; $i++) {
+            $this->getDataGenerator()->create_course();
+        }
+        $now = time();
+        $whole = (new readiness_report())->build(false, true, $now);
+        $chunked = (new readiness_report(2))->build(false, true, $now);
+        $this->assertGreaterThanOrEqual(5, count($whole['courses']));
+        $this->assertEquals($whole, $chunked);
+    }
+
+    /**
+     * Block configuration is described per course, and completion and format
+     * characteristics are counted and raise their warnings.
+     */
+    public function test_block_config_and_course_characteristics(): void {
+        $this->resetAfterTest();
+        $config = (object) [
+            'preset' => 'fewer', 'topn' => 3, 'peer_scope' => 'group',
+            'forum_silence_enabled' => '0', 'course_breaks' => "2026-12-21, 2027-01-03\n2027-04-01, 2027-04-05",
+        ];
+        $withblock = $this->getDataGenerator()->create_course(['enablecompletion' => 1]);
+        $this->getDataGenerator()->get_plugin_generator('block_atrisk')->create_instance([
+            'parentcontextid' => \context_course::instance($withblock->id)->id,
+            'configdata' => base64_encode(serialize($config)),
+        ]);
+        $this->getDataGenerator()->create_module('page', [
+            'course' => $withblock->id, 'completion' => COMPLETION_TRACKING_MANUAL,
+            'completionexpected' => time() + WEEKSECS,
+        ]);
+        $this->getDataGenerator()->create_module('page', [
+            'course' => $withblock->id, 'completion' => COMPLETION_TRACKING_MANUAL,
+        ]);
+        $social = $this->getDataGenerator()->create_course(['format' => 'social']);
+
+        $report = (new readiness_report())->build(false, true);
+        $rows = array_column($report['courses'], null, 'id');
+
+        $this->assertSame([
+            'preset' => 'fewer',
+            'topn_override' => 3,
+            'forum_silence_enabled' => '0',
+            'peer_scope' => 'group',
+            'course_breaks_lines' => 2,
+        ], $rows[$withblock->id]['block_atrisk_instance']);
+        $this->assertSame(1, $rows[$withblock->id]['activities_with_completionexpected']);
+        $this->assertSame(1, $rows[$withblock->id]['activities_completion_no_expected']);
+        $this->assertNull($rows[$social->id]['block_atrisk_instance']);
+        $this->assertSame(1, $report['course_summary']['with_at_least_one_completionexpected']);
+
+        $codes = array_column($report['warnings'], 'count', 'code');
+        $this->assertSame(1, $codes['completion_no_expected']);
+        $this->assertSame(1, $codes['awkward_format']);
     }
 }

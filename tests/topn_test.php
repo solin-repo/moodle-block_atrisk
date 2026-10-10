@@ -22,10 +22,10 @@ use advanced_testcase;
  * Tests for the in-block visible row count resolution and clamp (#4).
  *
  * @package    block_atrisk
- * @coversNothing
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk::class)]
 final class topn_test extends advanced_testcase {
     /**
      * resolve_topn() applies the site default, honors a positive
@@ -36,7 +36,7 @@ final class topn_test extends advanced_testcase {
     public function test_resolve_topn_defaults_overrides_and_clamps(): void {
         global $CFG;
         require_once($CFG->dirroot . '/lib/blocklib.php');
-        require_once($CFG->dirroot . '/blocks/atrisk/block_atrisk.php');
+        block_load_class('atrisk');
         $this->resetAfterTest();
 
         set_config('display_top_n', 12, 'block_atrisk');
@@ -63,5 +63,17 @@ final class topn_test extends advanced_testcase {
         // With no site default at all, it falls back to 12 (within the cap).
         unset_config('display_top_n', 'block_atrisk');
         $this->assertSame(12, \block_atrisk::resolve_topn(null));
+    }
+
+    /**
+     * A negative site default is raised to one row.
+     */
+    public function test_resolve_topn_floor(): void {
+        global $CFG;
+        require_once($CFG->libdir . '/blocklib.php');
+        block_load_class('atrisk');
+        $this->resetAfterTest();
+        set_config('display_top_n', -5, 'block_atrisk');
+        $this->assertSame(1, \block_atrisk::resolve_topn(null));
     }
 }

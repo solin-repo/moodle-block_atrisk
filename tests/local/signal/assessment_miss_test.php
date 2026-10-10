@@ -22,10 +22,10 @@ use advanced_testcase;
  * Unit tests for the assessment-miss signal classifier.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\signal\assessment_miss
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\signal\assessment_miss::class)]
 final class assessment_miss_test extends advanced_testcase {
     /**
      * Helper: create a course with completion enabled and one assign with

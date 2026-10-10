@@ -28,10 +28,10 @@ use core_privacy\local\request\writer;
  * Privacy API tests for block_atrisk. Covers FR-130 to FR-133 and FR-222.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\privacy\provider
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\privacy\provider::class)]
 final class provider_test extends advanced_testcase {
     /**
      * Seed one dismissal row.
@@ -308,5 +308,60 @@ final class provider_test extends advanced_testcase {
         $this->assertNotNull($exported, 'dismissals export must be present');
         $this->assertNotEmpty($exported->rows);
         $this->assertSame('subject', $exported->rows[0]['role']);
+    }
+
+    /**
+     * Flag snapshots are exported for their subject.
+     */
+    public function test_export_user_data_includes_flag_snapshots(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $context = context_course::instance($course->id);
+        $DB->insert_record('block_atrisk_flag_snapshots', (object) [
+            'courseid' => $course->id, 'userid' => $student->id, 'snapshotweek' => 202640,
+            'signal_name' => 'inactivity', 'metric_value' => 9, 'percentile' => 12,
+            'preset' => 'default', 'timecreated' => time(),
+        ]);
+
+        provider::export_user_data(new approved_contextlist($student, 'block_atrisk', [$context->id]));
+
+        $exported = writer::with_context($context)->get_data([get_string('pluginname', 'block_atrisk'), 'flag_snapshots']);
+        $this->assertCount(1, $exported->rows);
+        $this->assertSame('inactivity', $exported->rows[0]['signal_name']);
+        $this->assertEquals(12, $exported->rows[0]['percentile']);
+        $this->assertSame('default', $exported->rows[0]['preset']);
+    }
+
+    /**
+     * Non-course contexts and empty lists are ignored by every request type.
+     */
+    public function test_requests_ignore_non_course_contexts_and_empty_lists(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
+        $this->seed_dismissal((int) $course->id, (int) $student->id, (int) $teacher->id);
+        $this->seed_snapshot((int) $course->id, (int) $student->id);
+        $usercontext = \context_user::instance($student->id);
+
+        $userlist = new userlist($usercontext, 'block_atrisk');
+        provider::get_users_in_context($userlist);
+        $this->assertCount(0, $userlist);
+
+        provider::export_user_data(new approved_contextlist($student, 'block_atrisk', []));
+        provider::export_user_data(new approved_contextlist($student, 'block_atrisk', [$usercontext->id]));
+        $this->assertFalse(writer::with_context($usercontext)->has_any_data());
+
+        provider::delete_data_for_all_users_in_context($usercontext);
+        provider::delete_data_for_user(new approved_contextlist($student, 'block_atrisk', []));
+        provider::delete_data_for_user(new approved_contextlist($student, 'block_atrisk', [$usercontext->id]));
+        provider::delete_data_for_users(new approved_userlist($usercontext, 'block_atrisk', [$student->id]));
+        provider::delete_data_for_users(new approved_userlist(context_course::instance($course->id), 'block_atrisk', []));
+
+        $this->assertSame(1, $DB->count_records('block_atrisk_dismissals', ['courseid' => $course->id]));
+        $this->assertSame(1, $DB->count_records('block_atrisk_grade_snapshots', ['courseid' => $course->id]));
     }
 }

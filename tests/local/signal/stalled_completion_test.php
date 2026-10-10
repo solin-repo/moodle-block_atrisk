@@ -22,10 +22,10 @@ use advanced_testcase;
  * Unit tests for the stalled-completion signal.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\signal\stalled_completion
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\signal\stalled_completion::class)]
 final class stalled_completion_test extends advanced_testcase {
     /**
      * Insert N course-modules-completion rows for $userid in $course at

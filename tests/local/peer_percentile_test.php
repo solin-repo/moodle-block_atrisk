@@ -22,10 +22,10 @@ use advanced_testcase;
  * Unit tests for the peer-percentile helper.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\peer_percentile
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\peer_percentile::class)]
 final class peer_percentile_test extends advanced_testcase {
     public function test_lowest_value_in_cohort(): void {
         // Subject is the unique lowest in [0, 1, 2, 3, 4].

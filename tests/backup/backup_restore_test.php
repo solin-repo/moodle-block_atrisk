@@ -46,9 +46,10 @@ require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
 
 /**
  * Backup and restore round-trip coverage for block_atrisk per-instance config.
- *
- * @coversNothing
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\backup_atrisk_block_task::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\backup_atrisk_block_structure_step::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\restore_atrisk_block_task::class)]
 final class backup_restore_test extends advanced_testcase {
     /**
      * Build a configdata blob with non-default values for every per-instance key

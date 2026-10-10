@@ -23,10 +23,10 @@ use block_atrisk\local\signal_result;
  * Unit tests for the inactivity signal classifier.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\signal\inactivity
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\signal\inactivity::class)]
 final class inactivity_test extends advanced_testcase {
     public function test_no_lastaccess_row_treated_as_no_recorded_access(): void {
         $this->resetAfterTest();

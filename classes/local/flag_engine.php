@@ -177,26 +177,37 @@ final class flag_engine {
         // students whose metrics are undefined).
         // 4. Lastname/firstname ASC for stable ordering on full ties.
         $names = $this->load_names(array_map(fn($f) => $f->userid, $flagged));
-        usort($flagged, function (flagged_student $a, flagged_student $b) use ($names) {
-            $cmp = severity::rank($b->severity) <=> severity::rank($a->severity);
-            if ($cmp !== 0) {
-                return $cmp;
-            }
-            $cmp = $b->triggered_count() <=> $a->triggered_count();
-            if ($cmp !== 0) {
-                return $cmp;
-            }
-            $ap = $a->worstpercentile ?? PHP_INT_MAX;
-            $bp = $b->worstpercentile ?? PHP_INT_MAX;
-            $cmp = $ap <=> $bp;
-            if ($cmp !== 0) {
-                return $cmp;
-            }
-            $an = $names[$a->userid] ?? '';
-            $bn = $names[$b->userid] ?? '';
-            return strcasecmp($an, $bn);
-        });
+        usort($flagged, fn(flagged_student $a, flagged_student $b) => self::compare_flagged($a, $b, $names));
         return $flagged;
+    }
+
+    /**
+     * Sort comparator for flagged students: severity DESC, triggered-signal
+     * count DESC, worst percentile ASC (unknown last), then name ASC.
+     *
+     * @param flagged_student $a
+     * @param flagged_student $b
+     * @param array $names Map userid => sortable display name.
+     * @return int Negative when $a sorts first, positive when $b does.
+     */
+    public static function compare_flagged(flagged_student $a, flagged_student $b, array $names): int {
+        $cmp = severity::rank($b->severity) <=> severity::rank($a->severity);
+        if ($cmp !== 0) {
+            return $cmp;
+        }
+        $cmp = $b->triggered_count() <=> $a->triggered_count();
+        if ($cmp !== 0) {
+            return $cmp;
+        }
+        $ap = $a->worstpercentile ?? PHP_INT_MAX;
+        $bp = $b->worstpercentile ?? PHP_INT_MAX;
+        $cmp = $ap <=> $bp;
+        if ($cmp !== 0) {
+            return $cmp;
+        }
+        $an = $names[$a->userid] ?? '';
+        $bn = $names[$b->userid] ?? '';
+        return strcasecmp($an, $bn);
     }
 
     /**
@@ -277,9 +288,6 @@ final class flag_engine {
      */
     private function load_enrolments(int $courseid, array $userids): array {
         global $DB;
-        if (empty($userids)) {
-            return [];
-        }
         [$insql, $inparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'u');
         $rows = $DB->get_records_sql(
             "SELECT ue.id, ue.userid, ue.timestart, ue.timecreated, ue.timeend
@@ -309,9 +317,6 @@ final class flag_engine {
      */
     private function load_dismissed(int $courseid, array $userids, int $now): array {
         global $DB;
-        if (empty($userids)) {
-            return [];
-        }
         [$insql, $inparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'u');
         $rows = $DB->get_records_sql(
             "SELECT DISTINCT userid

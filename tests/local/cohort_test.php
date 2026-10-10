@@ -22,10 +22,10 @@ use advanced_testcase;
  * Unit tests for the cohort discovery and gating helper.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\cohort
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\cohort::class)]
 final class cohort_test extends advanced_testcase {
     public function test_active_cohort_includes_only_students(): void {
         $this->resetAfterTest();
@@ -297,5 +297,30 @@ final class cohort_test extends advanced_testcase {
     public function test_active_counts_empty_input_returns_empty(): void {
         $this->resetAfterTest();
         $this->assertSame([], cohort::active_counts([]));
+    }
+
+    /**
+     * Without gradebook roles the student archetype is used; a role list
+     * that resolves to nothing, or a site without student roles, yields an
+     * empty cohort.
+     */
+    public function test_role_fallbacks(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
+
+        $CFG->gradebookroles = '';
+        $this->assertSame([(int) $student->id], array_map('intval', cohort::active((int) $course->id)));
+        $this->assertSame([(int) $course->id => 1], cohort::active_counts([(int) $course->id]));
+
+        $CFG->gradebookroles = 'none';
+        $this->assertSame([], cohort::active((int) $course->id));
+        $this->assertSame([(int) $course->id => 0], cohort::active_counts([(int) $course->id]));
+
+        $CFG->gradebookroles = '';
+        $DB->set_field('role', 'archetype', '', ['archetype' => 'student']);
+        $this->assertSame([], cohort::active((int) $course->id));
     }
 }

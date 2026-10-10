@@ -22,10 +22,10 @@ use advanced_testcase;
  * Tests for the plugin's declared capabilities.
  *
  * @package    block_atrisk
- * @coversNothing
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversNothing]
 final class access_test extends advanced_testcase {
     /**
      * Every block must declare both addinstance and myaddinstance; the

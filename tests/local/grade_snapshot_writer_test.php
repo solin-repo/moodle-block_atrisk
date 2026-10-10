@@ -22,10 +22,10 @@ use advanced_testcase;
  * Unit tests for the weekly grade snapshot writer.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\grade_snapshot_writer
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\grade_snapshot_writer::class)]
 final class grade_snapshot_writer_test extends advanced_testcase {
     /**
      * Insert a block_atrisk instance into the given course context, and
@@ -183,5 +183,39 @@ final class grade_snapshot_writer_test extends advanced_testcase {
         // 2026-01-04 falls in ISO week 2026-W01.
         $ts = strtotime('2026-01-04 12:00:00 UTC');
         $this->assertEquals(202601, grade_snapshot_writer::iso_week($ts));
+    }
+
+    /**
+     * Real grades are stored; courses without a course total, without
+     * students, or on a site without gradebook roles write nothing.
+     */
+    public function test_grades_and_empty_cases(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $now = 1_700_000_000;
+        $writer = new grade_snapshot_writer();
+
+        $course = $this->getDataGenerator()->create_course();
+        $this->add_block_to_course($course->id);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $item = $DB->get_record('grade_items', ['courseid' => $course->id, 'itemtype' => 'course']);
+        $DB->insert_record('grade_grades', (object) [
+            'itemid' => $item->id, 'userid' => $student->id, 'finalgrade' => 72.5,
+        ]);
+        $this->assertSame(1, $writer->snapshot_course((int) $course->id, $now));
+        $this->assertEquals(72.5, $DB->get_field('block_atrisk_grade_snapshots', 'finalgrade', [
+            'courseid' => $course->id, 'userid' => $student->id,
+        ]));
+
+        $nototal = $this->getDataGenerator()->create_course();
+        $this->getDataGenerator()->create_and_enrol($nototal, 'student');
+        $this->assertSame(0, $writer->snapshot_course((int) $nototal->id, $now));
+
+        $nostudents = $this->getDataGenerator()->create_course();
+        $this->add_block_to_course($nostudents->id);
+        $this->assertSame(0, $writer->snapshot_course((int) $nostudents->id, $now));
+
+        $CFG->gradebookroles = '';
+        $this->assertSame(0, $writer->snapshot_course((int) $course->id, $now));
     }
 }

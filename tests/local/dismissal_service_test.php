@@ -22,10 +22,10 @@ use advanced_testcase;
  * Unit tests for the dismissal service.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\dismissal_service
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\dismissal_service::class)]
 final class dismissal_service_test extends advanced_testcase {
     public function test_dismiss_creates_record_with_one_week_window(): void {
         $this->resetAfterTest();

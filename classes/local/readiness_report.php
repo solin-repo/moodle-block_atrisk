@@ -68,6 +68,18 @@ final class readiness_report {
     ];
 
     /**
+     * Create a report generator.
+     *
+     * @param int $chunksize Courses surveyed per cursor chunk; tests use a
+     *        small value to cross chunk boundaries cheaply.
+     */
+    public function __construct(
+        /** @var int Courses surveyed per cursor chunk. */
+        private readonly int $chunksize = self::CHUNK
+    ) {
+    }
+
+    /**
      * Build the full report as an in-memory array.
      *
      * Suitable for json_encode() and for the default (bounded) scope. For
@@ -196,7 +208,7 @@ final class readiness_report {
         $chunk = [];
         foreach ($rs as $course) {
             $chunk[(int) $course->id] = $course;
-            if (count($chunk) >= self::CHUNK) {
+            if (count($chunk) >= $this->chunksize) {
                 yield from $this->map_chunk($chunk, $hasblock, $includenames, $now);
                 $chunk = [];
             }
@@ -291,9 +303,6 @@ final class readiness_report {
      */
     private function module_aggregates(array $courseids): array {
         global $DB;
-        if (empty($courseids)) {
-            return [];
-        }
         [$insql, $inparams] = $DB->get_in_or_equal($courseids, SQL_PARAMS_NAMED, 'cm');
         $sql = "SELECT course,
                        COUNT(*) AS cnt,
@@ -321,9 +330,6 @@ final class readiness_report {
      */
     private function block_configdata(array $courseids): array {
         global $DB;
-        if (empty($courseids)) {
-            return [];
-        }
         [$insql, $inparams] = $DB->get_in_or_equal($courseids, SQL_PARAMS_NAMED, 'bc');
         $sql = "SELECT ctx.instanceid AS courseid, bi.configdata
                   FROM {block_instances} bi

@@ -22,10 +22,10 @@ use advanced_testcase;
  * Unit tests for calibration window logic.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\calibration_window
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\calibration_window::class)]
 final class calibration_window_test extends advanced_testcase {
     public function test_within_gated_weeks_returns_gated(): void {
         $cw = new calibration_window();
@@ -132,5 +132,12 @@ final class calibration_window_test extends advanced_testcase {
             1_640_000_000,
             calibration_window::anchor_for($course, $enrolment)
         );
+    }
+
+    /**
+     * No course start date and no enrolment means no anchor.
+     */
+    public function test_anchor_for_without_any_date(): void {
+        $this->assertSame(0, calibration_window::anchor_for((object) ['startdate' => 0], null));
     }
 }

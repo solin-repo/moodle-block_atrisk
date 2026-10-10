@@ -23,10 +23,10 @@ use advanced_testcase;
  * snapshot task (FR-119 cluster).
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\flag_snapshot_writer
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\flag_snapshot_writer::class)]
 final class flag_snapshot_writer_test extends advanced_testcase {
     /**
      * Build a course past the calibration window with the at-risk block
@@ -174,5 +174,34 @@ final class flag_snapshot_writer_test extends advanced_testcase {
         $remaining = $DB->get_records('block_atrisk_flag_snapshots');
         $this->assertCount(1, $remaining, 'Only the recent row should survive a 30-day retention prune.');
         $this->assertSame(2, (int) reset($remaining)->userid);
+    }
+
+    /**
+     * The block's configured preset is recorded with each row, and a course
+     * with nobody flagged writes nothing.
+     */
+    public function test_snapshot_records_instance_preset_and_skips_unflagged_courses(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $now = 1_700_000_000;
+        [$course, $student] = $this->setup_course_with_block_and_student($now);
+        $DB->set_field('block_instances', 'configdata', base64_encode(serialize((object) ['preset' => 'fewer'])), [
+            'parentcontextid' => \context_course::instance($course->id)->id,
+        ]);
+
+        $writer = new flag_snapshot_writer();
+        $this->assertGreaterThan(0, $writer->snapshot_course((int) $course->id, $now));
+        $this->assertSame(['fewer'], array_values(array_unique($DB->get_fieldset_select(
+            'block_atrisk_flag_snapshots',
+            'preset',
+            'courseid = ?',
+            [$course->id]
+        ))));
+
+        $DB->insert_record('user_lastaccess', (object) [
+            'userid' => $student->id, 'courseid' => $course->id, 'timeaccess' => $now,
+        ]);
+        $quiet = $this->getDataGenerator()->create_course(['startdate' => $now - 10 * WEEKSECS]);
+        $this->assertSame(0, $writer->snapshot_course((int) $quiet->id, $now));
     }
 }

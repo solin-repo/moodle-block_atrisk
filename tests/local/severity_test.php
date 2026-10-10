@@ -22,10 +22,10 @@ use advanced_testcase;
  * Unit tests for severity classification.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\severity
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\severity::class)]
 final class severity_test extends advanced_testcase {
     public function test_zero_triggered_is_none(): void {
         $this->assertSame(severity::NONE, severity::classify(0));

@@ -422,7 +422,7 @@ class renderer extends \plugin_renderer_base {
      *
      * @param flagged_student $f
      * @param int $courseid
-     * @return string HTML (empty when no actions are available).
+     * @return string HTML. The outline link is always present.
      */
     private function render_actions(flagged_student $f, int $courseid): string {
         $context = \context_course::instance($courseid);
@@ -451,9 +451,6 @@ class renderer extends \plugin_renderer_base {
                 get_string('action_dismiss', 'block_atrisk'),
                 ['class' => 'block_atrisk_action']
             );
-        }
-        if (empty($actions)) {
-            return '';
         }
         return \html_writer::div(implode(' · ', $actions), 'block_atrisk_actions');
     }

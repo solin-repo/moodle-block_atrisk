@@ -473,20 +473,16 @@ final class course_shape {
     }
 
     /**
-     * Linear-interpolation percentile (R type 7). $sorted MUST be ascending.
+     * Linear-interpolation percentile (R type 7). $sorted MUST be ascending
+     * and hold at least two values.
      *
      * @param array $sorted Ascending-sorted numeric values.
      * @param float $p Percentile to compute (0..100).
      * @return float Percentile value.
      */
     private static function percentile(array $sorted, float $p): float {
+        // Only called from iqr(), which guarantees at least two values.
         $n = count($sorted);
-        if ($n === 0) {
-            return 0;
-        }
-        if ($n === 1) {
-            return (float) $sorted[0];
-        }
         $rank = ($p / 100) * ($n - 1);
         $low = (int) floor($rank);
         $high = (int) ceil($rank);

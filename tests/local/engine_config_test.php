@@ -25,10 +25,10 @@ use advanced_testcase;
  * the per-instance forum-silence override (FR-29 v1 implementation).
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\engine_config
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\engine_config::class)]
 final class engine_config_test extends advanced_testcase {
     public function test_more_preset_yields_more_flags_per_signal(): void {
         $this->resetAfterTest();
@@ -171,5 +171,51 @@ final class engine_config_test extends advanced_testcase {
         // The 'site' sentinel inherits the site setting (currently off).
         $inherit = engine_config::build_for_preset('default', (object) ['skip_ended_courses' => 'site']);
         $this->assertFalse($inherit['skip_ended_courses']);
+    }
+
+    /**
+     * With a course, the effective shape is resolved through the instance
+     * override, and a self-paced shape silences the peer-relative signals.
+     */
+    public function test_course_shape_override_and_self_paced_silencing(): void {
+        $this->resetAfterTest();
+        set_config('signal_stalled_completion_enabled', 1, 'block_atrisk');
+        set_config('signal_forum_silence_enabled', 1, 'block_atrisk');
+        $course = $this->getDataGenerator()->create_course();
+
+        $config = engine_config::build_for_preset('default', null, (int) $course->id);
+        $this->assertNull($config['course_shape']);
+        $this->assertTrue($config['signals']['stalled_completion']);
+
+        $instance = (object) ['course_shape_override' => course_shape::SHAPE_SELF_PACED];
+        $config = engine_config::build_for_preset('default', $instance, (int) $course->id);
+        $this->assertSame(course_shape::SHAPE_SELF_PACED, $config['course_shape']);
+        $this->assertFalse($config['signals']['stalled_completion']);
+        $this->assertFalse($config['signals']['forum_silence']);
+    }
+
+    /**
+     * Site and course breaks are merged; overlapping and adjacent ranges
+     * collapse, and an unparseable list is ignored rather than fatal.
+     */
+    public function test_breaks_are_merged_and_bad_input_ignored(): void {
+        $this->resetAfterTest();
+        set_config('breaks_calendar', "2026-12-21, 2026-12-31\n2027-03-01, 2027-03-05", 'block_atrisk');
+        $instance = (object) ['course_breaks' => "2027-01-01, 2027-01-03\n2026-12-24, 2026-12-26"];
+
+        $breaks = engine_config::build_for_preset('default', $instance)['breaks'];
+        $this->assertSame([
+            ['start' => strtotime('2026-12-21 00:00:00'), 'end' => strtotime('2027-01-03 00:00:00') + DAYSECS - 1],
+            ['start' => strtotime('2027-03-01 00:00:00'), 'end' => strtotime('2027-03-05 00:00:00') + DAYSECS - 1],
+        ], $breaks);
+
+        // A broken course list keeps the site list; a broken site list keeps the course list.
+        $breaks = engine_config::build_for_preset('default', (object) ['course_breaks' => 'soon'])['breaks'];
+        $this->assertCount(2, $breaks);
+        set_config('breaks_calendar', 'whenever', 'block_atrisk');
+        $breaks = engine_config::build_for_preset('default', $instance)['breaks'];
+        $this->assertSame(strtotime('2026-12-24 00:00:00'), $breaks[0]['start']);
+        $this->assertSame(strtotime('2027-01-01 00:00:00'), $breaks[1]['start']);
+        $this->assertSame([], engine_config::build_for_preset('default', (object) ['course_breaks' => ''])['breaks']);
     }
 }

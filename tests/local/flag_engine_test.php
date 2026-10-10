@@ -23,10 +23,10 @@ use advanced_testcase;
  * evaluation pass.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\flag_engine
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\flag_engine::class)]
 final class flag_engine_test extends advanced_testcase {
     /**
      * Make a course confidently past its calibration window.
@@ -532,5 +532,71 @@ final class flag_engine_test extends advanced_testcase {
         $this->assertTrue(flag_engine::course_has_ended($now - 1, $now));
         $this->assertFalse(flag_engine::course_has_ended($now + 1, $now));
         $this->assertFalse(flag_engine::course_has_ended(0, $now));
+    }
+
+    /**
+     * A course without active students has nothing to flag.
+     */
+    public function test_empty_cohort_returns_nothing(): void {
+        $this->resetAfterTest();
+        $now = 1_700_000_000;
+        $course = $this->make_course_past_calibration($now);
+        $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
+        $this->assertSame([], (new flag_engine())->evaluate_course((int) $course->id, [], $now));
+    }
+
+    /**
+     * Full ties on severity, signal count and percentile are ordered by
+     * name, case-insensitively.
+     */
+    public function test_full_tie_sorts_by_name(): void {
+        $this->resetAfterTest();
+        $now = 1_700_000_000;
+        $course = $this->make_course_past_calibration($now);
+        $zed = $this->getDataGenerator()->create_and_enrol($course, 'student', ['firstname' => 'Zed', 'lastname' => 'Last']);
+        $amy = $this->getDataGenerator()->create_and_enrol($course, 'student', ['firstname' => 'amy', 'lastname' => 'Last']);
+
+        // Neither student ever accessed the course: identical inactivity results.
+        $flagged = (new flag_engine())->evaluate_course((int) $course->id, [], $now);
+
+        $this->assertSame([(int) $amy->id, (int) $zed->id], array_map(fn($f) => (int) $f->userid, $flagged));
+    }
+
+    /**
+     * Peers without a metric are left out of the percentile cohort, and a
+     * signal without any cohort values has no rank.
+     */
+    public function test_worst_percentile_skips_missing_metrics_and_empty_cohorts(): void {
+        $engine = new flag_engine();
+        $subject = new signal_result(true, 'x', 10);
+        $peers = [
+            1 => $subject,
+            2 => new signal_result(false, '', null),
+            3 => new signal_result(false, '', 2),
+        ];
+        // Cohort [10, 2]: rank 75, inverted for high-is-bad inactivity.
+        $this->assertSame(25, $engine->worst_percentile(['inactivity' => $subject], ['inactivity' => $peers]));
+        $this->assertNull($engine->worst_percentile(['inactivity' => $subject], []));
+    }
+
+    /**
+     * Among students of equal severity, more triggered signals sort first,
+     * then the lower percentile (unknown last), then the name.
+     */
+    public function test_compare_flagged_tiebreaks(): void {
+        $sig = new signal_result(true, 'x', 1);
+        $make = fn(int $userid, int $signals, ?int $percentile) => new flagged_student(
+            $userid,
+            severity::classify($signals),
+            calibration_window::PHASE_CONFIDENT,
+            array_fill(0, $signals, $sig),
+            $percentile
+        );
+        $names = [1 => 'b', 2 => 'A'];
+
+        $this->assertLessThan(0, flag_engine::compare_flagged($make(1, 3, 50), $make(2, 2, 10), $names));
+        $this->assertGreaterThan(0, flag_engine::compare_flagged($make(1, 2, null), $make(2, 2, 90), $names));
+        $this->assertGreaterThan(0, flag_engine::compare_flagged($make(1, 2, 5), $make(2, 2, 5), $names));
+        $this->assertLessThan(0, flag_engine::compare_flagged($make(1, 2, 5), $make(2, 1, 5), $names));
     }
 }

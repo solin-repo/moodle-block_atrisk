@@ -22,10 +22,10 @@ use advanced_testcase;
  * Unit tests for the forum-silence signal.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\signal\forum_silence
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\signal\forum_silence::class)]
 final class forum_silence_test extends advanced_testcase {
     /**
      * Posts a forum message (creating a discussion if needed).

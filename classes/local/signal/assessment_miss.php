@@ -177,11 +177,9 @@ final class assessment_miss implements signal_interface {
             $bymodule[(int) $cm->module][(int) $cm->id] = (int) $cm->instance;
         }
 
-        // Map module id → table name.
+        // Map module id → table name. Only called with eligible activities,
+        // so there is always at least one module id.
         $moduleids = array_keys($bymodule);
-        if (empty($moduleids)) {
-            return [];
-        }
         [$msql, $mparams] = $DB->get_in_or_equal($moduleids, SQL_PARAMS_NAMED, 'm');
         $modulenames = $DB->get_records_select_menu(
             'modules',

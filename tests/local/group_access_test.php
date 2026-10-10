@@ -25,10 +25,10 @@ use advanced_testcase;
  * (FR-56 v1).
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\group_access
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\group_access::class)]
 final class group_access_test extends advanced_testcase {
     public function test_unrestricted_under_nogroups(): void {
         $this->resetAfterTest();

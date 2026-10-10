@@ -31,8 +31,8 @@ use context_course;
  * @package    block_atrisk
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @coversNothing
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk::class)]
 final class block_instance_test extends advanced_testcase {
     public function test_add_block_instance_to_course_creates_row_and_engine_config_loads(): void {
         $this->resetAfterTest();
