@@ -25,8 +25,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'block_atrisk';
-$plugin->version   = 2026061000; // Kept below the 5.x build so the directory orders 5.x as newest.
-$plugin->release   = '1.0.4';
+$plugin->version   = 2026101000; // Kept below the 5.x build so the directory orders 5.x as newest.
+$plugin->release   = '1.0.5';
 $plugin->maturity  = MATURITY_BETA;
 $plugin->requires  = 2024100700; // Moodle 4.5 LTS baseline.
 $plugin->supported = [405, 405]; // Single-version range on the 4.5 LTS branch (FR-181).
