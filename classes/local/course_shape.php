@@ -226,7 +226,10 @@ final class course_shape {
                 'courseid' => $courseid,
                 'contextid' => $context->id,
             ], $roleparams);
-            $sql = "SELECT DISTINCT ue.userid, ue.timestart
+            // One row per student: get_records_sql() keys on the first
+            // column, so a student with two enrolment methods must not
+            // produce two rows. The earliest start wins, as in flag_engine.
+            $sql = "SELECT ue.userid, MIN(ue.timestart) AS timestart
                       FROM {user_enrolments} ue
                       JOIN {enrol} e ON e.id = ue.enrolid
                                     AND e.courseid = :courseid
@@ -234,7 +237,8 @@ final class course_shape {
                       JOIN {role_assignments} ra ON ra.userid = ue.userid
                                                 AND ra.contextid = :contextid
                                                 AND ra.roleid {$rolesql}
-                     WHERE ue.status = 0";
+                     WHERE ue.status = 0
+                  GROUP BY ue.userid";
             $rows = $DB->get_records_sql($sql, $params);
             foreach ($rows as $r) {
                 $usercount++;

@@ -11,6 +11,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   "Detected shape" note always read "not yet computed", even after the
   daily detection task had run, because the form could not see its own
   block instance.
+- **Course-shape detection handles students with two enrolment methods.**
+  A student enrolled both manually and through self enrolment produced a
+  duplicate row: Moodle logged a developer notice and the student's
+  earliest start date could be lost, skewing the enrolment-spread
+  measure used to classify the course.
 
 ## [1.0.4] — 2026-06-10
 
