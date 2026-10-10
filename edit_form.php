@@ -164,9 +164,12 @@ class block_atrisk_edit_form extends block_edit_form {
         $mform->setAdvanced('config_course_shape_override');
         // Show the detected shape/confidence so the teacher can decide whether
         // to override (FR-106f).
+        // The parent exposes the block through a magic getter without
+        // __isset(), so empty($this->block) is always true; ask for it directly.
         $detected = null;
-        if (!empty($this->block) && !empty($this->block->instance->parentcontextid)) {
-            $parent = \context::instance_by_id($this->block->instance->parentcontextid, IGNORE_MISSING);
+        $block = $this->get_block();
+        if (!empty($block->instance->parentcontextid)) {
+            $parent = \context::instance_by_id($block->instance->parentcontextid, IGNORE_MISSING);
             if ($parent && $parent instanceof \context_course) {
                 $detected = \block_atrisk\local\course_shape::load($parent->instanceid);
             }

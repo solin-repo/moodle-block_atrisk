@@ -4,6 +4,14 @@ All notable changes to `block_atrisk` (Solin Early Warning) are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] — 2026-10-10
+
+### Fixed
+- **The block settings form now shows the detected course shape.** The
+  "Detected shape" note always read "not yet computed", even after the
+  daily detection task had run, because the form could not see its own
+  block instance.
+
 ## [1.0.4] — 2026-06-10
 
 ### Changed
