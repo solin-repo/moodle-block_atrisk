@@ -13,6 +13,7 @@ blasts. Signals you can read, thresholds you can tune.
 
 | Moodle | PHP | Database | Branch |
 |---|---|---|---|
+| 5.3 | 8.3+ | PostgreSQL 17+, MySQL 8.4+, MariaDB 11.4+ | `MOODLE_503_STABLE` |
 | 5.2 | 8.3+ | PostgreSQL, MySQL 8, MariaDB | `main` |
 | 5.1 | 8.2+ | PostgreSQL, MySQL 8, MariaDB | `MOODLE_501_STABLE` |
 | 4.5 LTS | 8.1+ | PostgreSQL, MySQL 8, MariaDB | `MOODLE_405_STABLE` |
@@ -23,6 +24,7 @@ Pick the branch / ZIP that matches your Moodle version:
 
 | Moodle | Tag pattern |
 |---|---|
+| 5.3 | `v{X.Y.Z}-MOODLE_503_STABLE` |
 | 5.2 | `v{X.Y.Z}-MOODLE_502_STABLE` |
 | 5.1 | `v{X.Y.Z}-MOODLE_501_STABLE` |
 | 4.5 LTS | `v{X.Y.Z}-MOODLE_405_STABLE` |
@@ -36,11 +38,11 @@ confirm.
 
 ```bash
 cd /path/to/moodle/blocks
-git clone -b MOODLE_502_STABLE https://github.com/solin-repo/moodle-block_atrisk.git atrisk
+git clone -b MOODLE_503_STABLE https://github.com/solin-repo/moodle-block_atrisk.git atrisk
 ```
 
-(For Moodle 4.5 LTS use `MOODLE_405_STABLE`; for 5.1 use
-`MOODLE_501_STABLE`. The directory name on disk must be `atrisk`, not
+(For Moodle 4.5 LTS use `MOODLE_405_STABLE`; for 5.2 use `main`; for 5.1
+use `MOODLE_501_STABLE`. The directory name on disk must be `atrisk`, not
 `moodle-block_atrisk`.)
 
 Then visit *Site administration → Notifications*, or run

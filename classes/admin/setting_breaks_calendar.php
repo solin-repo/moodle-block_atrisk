@@ -26,7 +26,7 @@ namespace block_atrisk\admin;
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class setting_breaks_calendar extends \admin_setting_configtextarea {
+class setting_breaks_calendar extends \core_admin\setting\setting\configtextarea {
     /**
      * Validate the submitted textarea content.
      *

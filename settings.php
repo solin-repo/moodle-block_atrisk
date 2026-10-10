@@ -28,19 +28,19 @@ defined('MOODLE_INTERNAL') || die();
 
 if ($ADMIN->fulltree) {
     // Per-signal enable/threshold.
-    $settings->add(new admin_setting_heading(
+    $settings->add(new \core_admin\setting\setting\heading(
         'block_atrisk/signals_heading',
         get_string('settings_signals_heading', 'block_atrisk'),
         get_string('settings_signals_heading_desc', 'block_atrisk')
     ));
 
-    $settings->add(new admin_setting_configcheckbox(
+    $settings->add(new \core_admin\setting\setting\configcheckbox(
         'block_atrisk/signal_inactivity_enabled',
         get_string('settings_signal_inactivity_enabled', 'block_atrisk'),
         get_string('settings_signal_inactivity_enabled_desc', 'block_atrisk'),
         1
     ));
-    $settings->add(new admin_setting_configtext(
+    $settings->add(new \core_admin\setting\setting\configtext(
         'block_atrisk/signal_inactivity_days',
         get_string('settings_signal_inactivity_days', 'block_atrisk'),
         get_string('settings_signal_inactivity_days_desc', 'block_atrisk'),
@@ -48,13 +48,13 @@ if ($ADMIN->fulltree) {
         PARAM_INT
     ));
 
-    $settings->add(new admin_setting_configcheckbox(
+    $settings->add(new \core_admin\setting\setting\configcheckbox(
         'block_atrisk/signal_assessment_miss_enabled',
         get_string('settings_signal_assessment_miss_enabled', 'block_atrisk'),
         get_string('settings_signal_assessment_miss_enabled_desc', 'block_atrisk'),
         1
     ));
-    $settings->add(new admin_setting_configtext(
+    $settings->add(new \core_admin\setting\setting\configtext(
         'block_atrisk/signal_assessment_miss_days',
         get_string('settings_signal_assessment_miss_days', 'block_atrisk'),
         get_string('settings_signal_assessment_miss_days_desc', 'block_atrisk'),
@@ -62,27 +62,27 @@ if ($ADMIN->fulltree) {
         PARAM_INT
     ));
 
-    $settings->add(new admin_setting_configcheckbox(
+    $settings->add(new \core_admin\setting\setting\configcheckbox(
         'block_atrisk/signal_grade_trend_enabled',
         get_string('settings_signal_grade_trend_enabled', 'block_atrisk'),
         get_string('settings_signal_grade_trend_enabled_desc', 'block_atrisk'),
         1
     ));
 
-    $settings->add(new admin_setting_configcheckbox(
+    $settings->add(new \core_admin\setting\setting\configcheckbox(
         'block_atrisk/signal_stalled_completion_enabled',
         get_string('settings_signal_stalled_completion_enabled', 'block_atrisk'),
         get_string('settings_signal_stalled_completion_enabled_desc', 'block_atrisk'),
         1
     ));
 
-    $settings->add(new admin_setting_configcheckbox(
+    $settings->add(new \core_admin\setting\setting\configcheckbox(
         'block_atrisk/signal_forum_silence_enabled',
         get_string('settings_signal_forum_silence_enabled', 'block_atrisk'),
         get_string('settings_signal_forum_silence_enabled_desc', 'block_atrisk'),
         0
     ));
-    $settings->add(new admin_setting_configtext(
+    $settings->add(new \core_admin\setting\setting\configtext(
         'block_atrisk/signal_forum_silence_days',
         get_string('settings_signal_forum_silence_days', 'block_atrisk'),
         get_string('settings_signal_forum_silence_days_desc', 'block_atrisk'),
@@ -91,19 +91,19 @@ if ($ADMIN->fulltree) {
     ));
 
     // Cohort floors.
-    $settings->add(new admin_setting_heading(
+    $settings->add(new \core_admin\setting\setting\heading(
         'block_atrisk/cohort_heading',
         get_string('settings_cohort_heading', 'block_atrisk'),
         get_string('settings_cohort_heading_desc', 'block_atrisk')
     ));
-    $settings->add(new admin_setting_configtext(
+    $settings->add(new \core_admin\setting\setting\configtext(
         'block_atrisk/cohort_hard_floor',
         get_string('settings_cohort_hard_floor', 'block_atrisk'),
         get_string('settings_cohort_hard_floor_desc', 'block_atrisk'),
         10,
         PARAM_INT
     ));
-    $settings->add(new admin_setting_configtext(
+    $settings->add(new \core_admin\setting\setting\configtext(
         'block_atrisk/cohort_soft_floor',
         get_string('settings_cohort_soft_floor', 'block_atrisk'),
         get_string('settings_cohort_soft_floor_desc', 'block_atrisk'),
@@ -112,25 +112,25 @@ if ($ADMIN->fulltree) {
     ));
 
     // Display.
-    $settings->add(new admin_setting_heading(
+    $settings->add(new \core_admin\setting\setting\heading(
         'block_atrisk/display_heading',
         get_string('settings_display_heading', 'block_atrisk'),
         ''
     ));
-    $settings->add(new admin_setting_configtext(
+    $settings->add(new \core_admin\setting\setting\configtext(
         'block_atrisk/display_top_n',
         get_string('settings_display_top_n', 'block_atrisk'),
         get_string('settings_display_top_n_desc', 'block_atrisk'),
         12,
         PARAM_INT
     ));
-    $settings->add(new admin_setting_configcheckbox(
+    $settings->add(new \core_admin\setting\setting\configcheckbox(
         'block_atrisk/sensitivity_preset_enabled',
         get_string('settings_sensitivity_preset_enabled', 'block_atrisk'),
         get_string('settings_sensitivity_preset_enabled_desc', 'block_atrisk'),
         1
     ));
-    $settings->add(new admin_setting_configcheckbox(
+    $settings->add(new \core_admin\setting\setting\configcheckbox(
         'block_atrisk/skip_ended_courses',
         get_string('settings_skip_ended_courses', 'block_atrisk'),
         get_string('settings_skip_ended_courses_desc', 'block_atrisk'),
@@ -138,7 +138,7 @@ if ($ADMIN->fulltree) {
     ));
 
     // Breaks calendar (institutional holidays / term breaks).
-    $settings->add(new admin_setting_heading(
+    $settings->add(new \core_admin\setting\setting\heading(
         'block_atrisk/breaks_heading',
         get_string('settings_breaks_heading', 'block_atrisk'),
         get_string('settings_breaks_heading_desc', 'block_atrisk')
@@ -154,25 +154,25 @@ if ($ADMIN->fulltree) {
     ));
 
     // Recalibration data — flag-history snapshots + dismissal signal capture.
-    $settings->add(new admin_setting_heading(
+    $settings->add(new \core_admin\setting\setting\heading(
         'block_atrisk/calibration_heading',
         get_string('settings_calibration_heading', 'block_atrisk'),
         get_string('settings_calibration_heading_desc', 'block_atrisk')
     ));
-    $settings->add(new admin_setting_configcheckbox(
+    $settings->add(new \core_admin\setting\setting\configcheckbox(
         'block_atrisk/flag_logging_enabled',
         get_string('settings_flag_logging_enabled', 'block_atrisk'),
         get_string('settings_flag_logging_enabled_desc', 'block_atrisk'),
         0
     ));
-    $settings->add(new admin_setting_configtext(
+    $settings->add(new \core_admin\setting\setting\configtext(
         'block_atrisk/flag_log_retention_days',
         get_string('settings_flag_log_retention_days', 'block_atrisk'),
         get_string('settings_flag_log_retention_days_desc', 'block_atrisk'),
         365,
         PARAM_INT
     ));
-    $settings->add(new admin_setting_configtext(
+    $settings->add(new \core_admin\setting\setting\configtext(
         'block_atrisk/dismissal_log_retention_days',
         get_string('settings_dismissal_log_retention_days', 'block_atrisk'),
         get_string('settings_dismissal_log_retention_days_desc', 'block_atrisk'),
@@ -182,7 +182,7 @@ if ($ADMIN->fulltree) {
 
     // Commercial extensions and support — informational only. No feature
     // gating; all plugin functionality is GPL and unrestricted.
-    $settings->add(new admin_setting_heading(
+    $settings->add(new \core_admin\setting\setting\heading(
         'block_atrisk/commercial_heading',
         get_string('settings_commercial_heading', 'block_atrisk'),
         get_string('settings_commercial_heading_desc', 'block_atrisk')
@@ -192,7 +192,7 @@ if ($ADMIN->fulltree) {
 // Readiness data export — admin externalpage. Registered unconditionally
 // (outside $ADMIN->fulltree) so it appears in the admin tree as a sibling
 // of the settings page.
-$ADMIN->add('blocksettings', new admin_externalpage(
+$ADMIN->add('blocksettings', new \core_admin\setting\tree\externalpage(
     'block_atrisk_readiness',
     get_string('readiness:menu', 'block_atrisk'),
     new moodle_url('/blocks/atrisk/readiness.php'),

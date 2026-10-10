@@ -4,6 +4,33 @@ All notable changes to `block_atrisk` (Solin Early Warning) are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] — 2026-10-10
+
+### Added
+- **Moodle 5.3 support** on the new `MOODLE_503_STABLE` branch
+  (`supported = [503, 503]`, requires Moodle 5.3 build 2026100500). Tested
+  on PHP 8.4 with PostgreSQL 17.
+
+### Fixed
+- **The block settings form now shows the detected course shape.** The
+  "Detected shape" note always read "not yet computed", even after the
+  daily detection task had run, because the form could not see its own
+  block instance.
+- **The break-dampening note counts whole break days correctly.** A
+  14-day break was reported as 13 days in the "Break dampening" note.
+  Signal calculations were not affected.
+
+### Internal
+- Site settings use the namespaced `core_admin\setting\...` classes
+  introduced in Moodle 5.3 instead of the legacy `admin_setting_*` names.
+- Line coverage of every class by PHPUnit, plus Behat scenarios for every
+  page (block, view all, dismiss, pause, sensitivity, readiness export,
+  settings, block settings form). PHPUnit test metadata moved from
+  doc-comments to attributes. CI runs Behat as well as PHPUnit.
+- Small refactors for testability: the flagged-student sort comparator is a
+  public static method, and the readiness report accepts a chunk size.
+  Unreachable guard branches were removed.
+
 ## [1.0.4] — 2026-06-10
 
 ### Changed
