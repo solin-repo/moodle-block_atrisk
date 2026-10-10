@@ -123,7 +123,9 @@ final class breaks {
 
     /**
      * Convenience wrapper around {@see self::overlap_seconds()} returning
-     * days (rounded down) — the unit signals work in.
+     * whole days for display. Rounds to the nearest day: a range ends at
+     * 23:59:59 of its last day, so rounding down would report a 14-day
+     * break as 13 days, and a DST change shifts a range by an hour.
      *
      * @param array $ranges Parsed ranges.
      * @param int $windowstart Window start (inclusive).
@@ -131,7 +133,7 @@ final class breaks {
      * @return int Total overlap in whole days (zero if no overlap).
      */
     public static function overlap_days(array $ranges, int $windowstart, int $windowend): int {
-        return (int) floor(self::overlap_seconds($ranges, $windowstart, $windowend) / DAYSECS);
+        return (int) round(self::overlap_seconds($ranges, $windowstart, $windowend) / DAYSECS);
     }
 
     /**

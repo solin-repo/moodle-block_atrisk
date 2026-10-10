@@ -23,10 +23,10 @@ use advanced_testcase;
  * active-range detection for the breaks-calendar feature.
  *
  * @package    block_atrisk
- * @covers     \block_atrisk\local\breaks
  * @copyright  2026 Solin (Onno Schuit) <o.schuit@solin.nl>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\block_atrisk\local\breaks::class)]
 final class breaks_test extends advanced_testcase {
     public function test_empty_input_returns_empty_list(): void {
         $this->assertSame([], breaks::parse(''));
@@ -125,12 +125,14 @@ final class breaks_test extends advanced_testcase {
         $this->assertSame($expected, breaks::overlap_seconds($ranges, $windowstart, $windowend));
     }
 
-    public function test_overlap_days_rounds_down(): void {
-        // Single 14-day break, window covering it entirely.
+    public function test_overlap_days_counts_inclusive_days(): void {
+        // Single 14-day break (both dates inclusive), window covering it entirely.
         $ranges = breaks::parse('2026-12-22, 2027-01-04');
         $windowstart = strtotime('2026-12-01 00:00:00');
         $windowend = strtotime('2027-02-01 00:00:00');
-        $this->assertSame(13, breaks::overlap_days($ranges, $windowstart, $windowend));
+        $this->assertSame(14, breaks::overlap_days($ranges, $windowstart, $windowend));
+        // A window ending half-way through the first break day counts half a day as zero.
+        $this->assertSame(0, breaks::overlap_days($ranges, $windowstart, strtotime('2026-12-22 11:00:00')));
     }
 
     public function test_active_at_finds_current_break(): void {
@@ -145,5 +147,13 @@ final class breaks_test extends advanced_testcase {
         $ranges = breaks::parse('2026-12-22, 2027-01-04');
         $now = strtotime('2027-01-15 12:00:00');
         $this->assertNull(breaks::active_at($ranges, $now));
+    }
+
+    /**
+     * An inverted window has no overlap.
+     */
+    public function test_overlap_seconds_inverted_window(): void {
+        $ranges = breaks::parse('2026-12-22, 2027-01-04');
+        $this->assertSame(0, breaks::overlap_seconds($ranges, strtotime('2027-01-01'), strtotime('2026-12-25')));
     }
 }
