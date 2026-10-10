@@ -555,4 +555,25 @@ final class course_shape_test extends advanced_testcase {
         ]);
         $this->assertSame([(int) $with->id], course_shape::courses_with_block());
     }
+
+    /**
+     * A student enrolled through two methods counts once, with their
+     * earliest start date, and causes no duplicate-key debugging.
+     */
+    public function test_gather_features_student_with_two_enrolments(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $start = time() - 10 * WEEKSECS;
+        $course = $this->getDataGenerator()->create_course(['startdate' => $start]);
+        // Self enrolment instances are disabled by default; enable it.
+        $DB->set_field('enrol', 'status', ENROL_INSTANCE_ENABLED, ['courseid' => $course->id, 'enrol' => 'self']);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, 'student', 'manual', $start + DAYSECS);
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, 'student', 'self', $start);
+
+        $features = course_shape::gather_features((int) $course->id);
+
+        $this->assertSame(1, $features['enrolment_count']);
+        $this->assertSame([$start], $features['enrolment_timestarts']);
+    }
 }
